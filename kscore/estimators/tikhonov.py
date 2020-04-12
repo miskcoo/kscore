@@ -10,10 +10,10 @@ import tensorflow as tf
 import tensorflow.contrib.solvers as solvers
 
 from kscore.utils import random_choice
-from kscore.kernel import CurlFreeIMQ
+from kscore.kernels import CurlFreeIMQ
 from .base import ScoreEstimator
 
-class TikhonovScoreEstimator(ScoreEstimator):
+class TikhonovEstimator(ScoreEstimator):
     def __init__(self,
                  lam,
                  kernel=CurlFreeIMQ(),
