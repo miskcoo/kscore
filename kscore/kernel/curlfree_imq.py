@@ -13,10 +13,8 @@ from kscore.utils import median_heuristic
 
 class CurlFreeIMQ(BaseKernel):
 
-    def __init__(self, kernel_width=None, heuristic_hyperparams=median_heuristic):
-        if kernel_width is not None:
-            heuristic_hyperparams = lambda x, y: kernel_width
-        super().__init__('curl-free', heuristic_hyperparams)
+    def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
+        super().__init__('curl-free', kernel_hyperparams, heuristic_hyperparams)
 
     def kernel_operator(self, x, y, kernel_hyperparams=None, compute_divergence=True):
         if kernel_hyperparams is None:
@@ -57,7 +55,7 @@ class CurlFreeIMQ(BaseKernel):
             ret = coeff * (z - coeff_i * tf.expand_dims(dot_rz, -2) * r) # [M, N, d, L]
             return tf.reshape(tf.reduce_sum(ret, axis=-3), [M * d, L])
 
-        def kernel_transpose_op(z):
+        def kernel_adjoint_op(z):
             # z: [M * d, L]
             L = None
             if z.get_shape() is not None:
@@ -82,13 +80,13 @@ class CurlFreeIMQ(BaseKernel):
             return K
 
         linear_operator = collections.namedtuple(
-            "KernelOperator", ["shape", "dtype", "apply", "apply_transpose", "kernel_matrix"])
+            "KernelOperator", ["shape", "dtype", "apply", "apply_adjoint", "kernel_matrix"])
 
         op = linear_operator(
             shape=[M * d, N * d],
             dtype=x.dtype,
             apply=kernel_op,
-            apply_transpose=kernel_transpose_op,
+            apply_adjoint=kernel_adjoint_op,
             kernel_matrix=kernel_mat,
         )
 
@@ -96,9 +94,9 @@ class CurlFreeIMQ(BaseKernel):
             return op, divergence
         return op
 
-    def kernel_matrix(self, x, y, kernel_hyperparams=None, flatten=False, compute_divergence=True):
+    def kernel_matrix(self, x, y, kernel_hyperparams=None, flatten=True, compute_divergence=True):
         if compute_divergence:
-            op, divergence = self.kernel_operator(x, y, True, kernel_width)
+            op, divergence = self.kernel_operator(x, y, True, kernel_hyperparams)
             return op.kernel_matrix(flatten), divergence
-        op = self.kernel_operator(x, y, False, kernel_width)
+        op = self.kernel_operator(x, y, False, kernel_hyperparams)
         return op.kernel_matrix(flatten)

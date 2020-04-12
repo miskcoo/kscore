@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import collections
+import tensorflow as tf
+
+from .base import BaseKernel
+from kscore.utils import median_heuristic
+
+class DiagonalKernel(BaseKernel):
+
+    def __init__(self, kernel_hyperparams, heuristic_hyperparams):
+        super().__init__('diagonal', kernel_hyperparams, heuristic_hyperparams)
+
+    def _gram(self, x, y, kernel_hyperparams):
+        raise NotImplementedError('Gram matrix not implemented!')
+
+    def kernel_operator(self, x, y, kernel_hyperparams=None, compute_divergence=True):
+        d = tf.shape(x)[-1]
+        M = tf.shape(x)[-2]
+        N = tf.shape(y)[-2]
+        K, divergence = self._gram(x, y, kernel_hyperparams)
+
+        def kernel_op(z):
+            # z: [N * d, L]
+            L = None
+            if z.get_shape() is not None:
+                L = z.get_shape()[-1]
+            if L is None:
+                L = tf.shape(z)[-1]
+            z = tf.reshape(z, [N, d * L])
+            ret = tf.matmul(K, z)
+            return tf.reshape(ret, [M * d, L])
+
+        def kernel_adjoint_op(z):
+            # z: [M * d, L]
+            L = None
+            if z.get_shape() is not None:
+                L = z.get_shape()[-1]
+            if L is None:
+                L = tf.shape(z)[-1]
+            z = tf.reshape(z, [M, d * L])
+            ret = tf.matmul(K, z, transpose_a=True)
+            return tf.reshape(ret, [N * d, L])
+
+        def kernel_mat(flatten):
+            if flatten:
+                return K
+            return tf.expand_dims(tf.expand_dims(K, -1), -1) * tf.eye(d)
+
+        linear_operator = collections.namedtuple(
+            "KernelOperator", ["shape", "dtype", "apply", "apply_adjoint", "kernel_matrix"])
+
+        op = linear_operator(
+            shape=[M * d, N * d],
+            dtype=x.dtype,
+            apply=kernel_op,
+            apply_adjoint=kernel_adjoint_op,
+            kernel_matrix=kernel_mat,
+        )
+
+        if compute_divergence:
+            return op, divergence
+        return op
+
+    def kernel_matrix(self, x, y, kernel_hyperparams=None, flatten=True, compute_divergence=True):
+        if compute_divergence:
+            op, divergence = self.kernel_operator(x, y, True, kernel_hyperparams)
+            return op.kernel_matrix(flatten), divergence
+        op = self.kernel_operator(x, y, False, kernel_hyperparams)
+        return op.kernel_matrix(flatten)

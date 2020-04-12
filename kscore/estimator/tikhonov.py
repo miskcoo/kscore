@@ -11,32 +11,31 @@ import tensorflow.contrib.solvers as solvers
 
 from kscore.utils import random_choice
 from kscore.kernel import CurlFreeIMQ
+from .base import ScoreEstimator
 
-class TikhonovScoreEstimator:
+class TikhonovScoreEstimator(ScoreEstimator):
     def __init__(self,
                  lam,
                  kernel=CurlFreeIMQ(),
-                 downsample_rate=None,
+                 truncated_tikhonov=False,
+                 subsample_rate=None,
                  use_cg=False,
                  maxiter_cg=40):
-        self._lam = lam
-        self._kernel = kernel
-        self._coeff = None
-        self._kernel_hyperparams = None
-        self._samples = None
+        super().__init__(lam, kernel)
         self._use_cg = use_cg
-        self._downsample_rate = downsample_rate
+        self._subsample_rate = subsample_rate
         self._maxiter_cg = maxiter_cg
+        self._truncated_tikhonov = truncated_tikhonov
 
     def fit(self, samples, kernel_hyperparams=None):
-        if self._downsample_rate is None:
+        if self._subsample_rate is None:
             return self._fit_exact(samples, kernel_hyperparams)
         else:
-            return self._fit_downsample(samples, kernel_hyperparams)
+            return self._fit_subsample(samples, kernel_hyperparams)
 
     def compute_gradients(self, x):
         d = tf.shape(x)[-1]
-        if self._downsample_rate is None:
+        if self._subsample_rate is None and not self._truncated_tikhonov:
             Kxq_op, div_xq = self._kernel.kernel_operator(x, self._samples,
                     kernel_hyperparams=self._kernel_hyperparams)
             div_xq = tf.reduce_mean(div_xq, axis=-2) / self._lam
@@ -50,14 +49,14 @@ class TikhonovScoreEstimator:
             grads = tf.reshape(grads, [-1, d])
         return grads
 
-    def _fit_downsample(self, samples, kernel_hyperparams=None):
+    def _fit_subsample(self, samples, kernel_hyperparams=None):
         # samples: [M, d]
         if kernel_hyperparams is None:
             kernel_hyperparams = self._kernel.heuristic_hyperparams(samples, samples)
         self._kernel_hyperparams = kernel_hyperparams
 
         M = tf.shape(samples)[-2]
-        N = tf.to_int32(tf.to_float(M) * self._downsample_rate)
+        N = tf.to_int32(tf.to_float(M) * self._subsample_rate)
         d = tf.shape(samples)[-1]
 
         subsamples = random_choice(samples, N)
@@ -69,7 +68,7 @@ class TikhonovScoreEstimator:
 
         if self._use_cg:
             def apply_kernel(v):
-                return Knm_op.apply(Knm_op.apply_transpose(v)) / tf.to_float(M) \
+                return Knm_op.apply(Knm_op.apply_adjoint(v)) / tf.to_float(M) \
                         + self._lam * Knn_op.apply(v)
 
             linear_operator = collections.namedtuple(
@@ -90,12 +89,16 @@ class TikhonovScoreEstimator:
             Knn = Knn_op.kernel_matrix(flatten=True)
             Knm = Knm_op.kernel_matrix(flatten=True)
             K_inner = tf.matmul(Knm, Knm, transpose_b=True) / tf.to_float(M) + self._lam * Knn
-
-            # This is necessary for numerical stability
-            K_inner += 1.0e-7 * tf.eye(N * d)
             H_dh = tf.reduce_mean(K_div, axis=-2)
-            H_dh = tf.reshape(H_dh, [N * d, 1])
-            self._coeff = tf.linalg.solve(K_inner, H_dh)
+
+            if self._kernel.kernel_type() == 'diagonal':
+                K_inner += 1.0e-7 * tf.eye(N)
+                H_dh = tf.reshape(H_dh, [N, d])
+            else:
+                # This is necessary for numerical stability
+                K_inner += 1.0e-7 * tf.eye(N * d)
+                H_dh = tf.reshape(H_dh, [N * d, 1])
+            self._coeff = tf.reshape(tf.linalg.solve(K_inner, H_dh), [N * d, 1])
 
     def _fit_exact(self, samples, kernel_hyperparams=None):
         # samples: [M, d]
@@ -111,8 +114,12 @@ class TikhonovScoreEstimator:
                 kernel_hyperparams=kernel_hyperparams)
 
         if self._use_cg:
-            def apply_kernel(v):
-                return K_op.apply(v) + tf.to_float(M) * self._lam * v
+            if self._truncated_tikhonov:
+                def apply_kernel(v):
+                    return K_op.apply(K_op.apply(v) / tf.to_float(M) + self._lam * v)
+            else:
+                def apply_kernel(v):
+                    return K_op.apply(v) + tf.to_float(M) * self._lam * v
 
             linear_operator = collections.namedtuple(
                 "LinearOperator", ["shape", "dtype", "apply", "apply_adjoint"])
@@ -129,8 +136,18 @@ class TikhonovScoreEstimator:
             self._coeff = tf.reshape(conj_ret.x, [M * d, 1])
         else:
             K = K_op.kernel_matrix(flatten=True)
-            K += tf.to_float(M) * self._lam * tf.eye(M * d)
             H_dh = tf.reduce_mean(K_div, axis=-2)
-            H_dh = tf.reshape(H_dh, [M * d, 1]) / self._lam
-            self._coeff = tf.linalg.solve(K, H_dh)
+            if self._kernel.kernel_type() == 'diagonal':
+                identity = tf.eye(M)
+                H_shape = [M, d]
+            else:
+                identity = tf.eye(M * d)
+                H_shape = [M * d, 1]
+
+            if self._truncated_tikhonov:
+                K = tf.matmul(K, K) / tf.to_float(M) + self._lam * K + 1.0e-7 * identity
+            else:
+                K += tf.to_float(M) * self._lam * identity
+            H_dh = tf.reshape(H_dh, H_shape) / self._lam
+            self._coeff = tf.reshape(tf.linalg.solve(K, H_dh), [M * d, 1])
 

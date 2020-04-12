@@ -7,7 +7,9 @@ from __future__ import print_function
 
 class BaseKernel:
 
-    def __init__(self, kernel_type, heuristic_hyperparams):
+    def __init__(self, kernel_type, kernel_hyperparams, heuristic_hyperparams):
+        if kernel_hyperparams is not None:
+            heuristic_hyperparams = lambda x, y: kernel_hyperparams
         self._kernel_type = kernel_type
         self._heuristic_hyperparams = heuristic_hyperparams
 
