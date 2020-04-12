@@ -6,7 +6,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-import tensorflow.contrib.solvers as solvers
 import math
 
 from kscore.kernels import CurlFreeIMQ
