@@ -1,0 +1,136 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import collections
+import tensorflow as tf
+import tensorflow.contrib.solvers as solvers
+
+from kscore.utils import random_choice
+from kscore.kernel import CurlFreeIMQ
+
+class TikhonovScoreEstimator:
+    def __init__(self,
+                 lam,
+                 kernel=CurlFreeIMQ(),
+                 downsample_rate=None,
+                 use_cg=False,
+                 maxiter_cg=40):
+        self._lam = lam
+        self._kernel = kernel
+        self._coeff = None
+        self._kernel_hyperparams = None
+        self._samples = None
+        self._use_cg = use_cg
+        self._downsample_rate = downsample_rate
+        self._maxiter_cg = maxiter_cg
+
+    def fit(self, samples, kernel_hyperparams=None):
+        if self._downsample_rate is None:
+            return self._fit_exact(samples, kernel_hyperparams)
+        else:
+            return self._fit_downsample(samples, kernel_hyperparams)
+
+    def compute_gradients(self, x):
+        d = tf.shape(x)[-1]
+        if self._downsample_rate is None:
+            Kxq_op, div_xq = self._kernel.kernel_operator(x, self._samples,
+                    kernel_hyperparams=self._kernel_hyperparams)
+            div_xq = tf.reduce_mean(div_xq, axis=-2) / self._lam
+            grads = Kxq_op.apply(self._coeff)
+            grads = tf.reshape(grads, [-1, d]) - div_xq
+        else:
+            d = tf.shape(x)[-1]
+            Kxq_op = self._kernel.kernel_operator(x, self._samples,
+                    kernel_hyperparams=self._kernel_hyperparams, compute_divergence=False)
+            grads = -Kxq_op.apply(self._coeff)
+            grads = tf.reshape(grads, [-1, d])
+        return grads
+
+    def _fit_downsample(self, samples, kernel_hyperparams=None):
+        # samples: [M, d]
+        if kernel_hyperparams is None:
+            kernel_hyperparams = self._kernel.heuristic_hyperparams(samples, samples)
+        self._kernel_hyperparams = kernel_hyperparams
+
+        M = tf.shape(samples)[-2]
+        N = tf.to_int32(tf.to_float(M) * self._downsample_rate)
+        d = tf.shape(samples)[-1]
+
+        subsamples = random_choice(samples, N)
+        Knn_op = self._kernel.kernel_operator(subsamples, subsamples, 
+                kernel_hyperparams=kernel_hyperparams, compute_divergence=False)
+        Knm_op, K_div = self._kernel.kernel_operator(subsamples, samples,
+                kernel_hyperparams=kernel_hyperparams)
+        self._samples = subsamples
+
+        if self._use_cg:
+            def apply_kernel(v):
+                return Knm_op.apply(Knm_op.apply_transpose(v)) / tf.to_float(M) \
+                        + self._lam * Knn_op.apply(v)
+
+            linear_operator = collections.namedtuple(
+                "LinearOperator", ["shape", "dtype", "apply", "apply_adjoint"])
+            Kcg_op = linear_operator(
+                shape=Knn_op.shape,
+                dtype=Knn_op.dtype,
+                apply=apply_kernel,
+                apply_adjoint=apply_kernel,
+            )
+            H_dh = tf.reduce_mean(K_div, axis=-2)
+            H_dh = tf.reshape(H_dh, [N * d])
+            conj_ret = solvers.linear_equations.conjugate_gradient(
+                    Kcg_op, H_dh, max_iter=self._maxiter_cg)
+            self._coeff = tf.reshape(conj_ret.x, [N * d, 1])
+        else:
+            # K_inner: [Md, Md]
+            Knn = Knn_op.kernel_matrix(flatten=True)
+            Knm = Knm_op.kernel_matrix(flatten=True)
+            K_inner = tf.matmul(Knm, Knm, transpose_b=True) / tf.to_float(M) + self._lam * Knn
+
+            # This is necessary for numerical stability
+            K_inner += 1.0e-7 * tf.eye(N * d)
+            H_dh = tf.reduce_mean(K_div, axis=-2)
+            H_dh = tf.reshape(H_dh, [N * d, 1])
+            self._coeff = tf.linalg.solve(K_inner, H_dh)
+
+    def _fit_exact(self, samples, kernel_hyperparams=None):
+        # samples: [M, d]
+        if kernel_hyperparams is None:
+            kernel_hyperparams = self._kernel.heuristic_hyperparams(samples, samples)
+        self._kernel_hyperparams = kernel_hyperparams
+        self._samples = samples
+
+        M = tf.shape(samples)[-2]
+        d = tf.shape(samples)[-1]
+
+        K_op, K_div = self._kernel.kernel_operator(samples, samples,
+                kernel_hyperparams=kernel_hyperparams)
+
+        if self._use_cg:
+            def apply_kernel(v):
+                return K_op.apply(v) + tf.to_float(M) * self._lam * v
+
+            linear_operator = collections.namedtuple(
+                "LinearOperator", ["shape", "dtype", "apply", "apply_adjoint"])
+            Kcg_op = linear_operator(
+                shape=K_op.shape,
+                dtype=K_op.dtype,
+                apply=apply_kernel,
+                apply_adjoint=apply_kernel,
+            )
+            H_dh = tf.reduce_mean(K_div, axis=-2)
+            H_dh = tf.reshape(H_dh, [M * d]) / self._lam
+            conj_ret = solvers.linear_equations.conjugate_gradient(
+                    Kcg_op, H_dh, max_iter=self._maxiter_cg)
+            self._coeff = tf.reshape(conj_ret.x, [M * d, 1])
+        else:
+            K = K_op.kernel_matrix(flatten=True)
+            K += tf.to_float(M) * self._lam * tf.eye(M * d)
+            H_dh = tf.reduce_mean(K_div, axis=-2)
+            H_dh = tf.reshape(H_dh, [M * d, 1]) / self._lam
+            self._coeff = tf.linalg.solve(K, H_dh)
+
