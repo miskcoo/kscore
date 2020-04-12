@@ -34,7 +34,7 @@ class CurlFreeGaussian(BaseKernel):
 
         if compute_divergence:
             div_coeff = rbf * (dist2 * inv_sqr_sigma \
-                    - (tf.to_float(d) + 2)) * inv_sqr_sigma ** 2 # [M, N]
+                    - (tf.cast(d, tf.float32) + 2)) * inv_sqr_sigma ** 2 # [M, N]
             divergence = -tf.expand_dims(div_coeff, -1) * diff 
 
         def kernel_op(z):
@@ -69,7 +69,7 @@ class CurlFreeGaussian(BaseKernel):
         def kernel_mat(flatten):
             Km = tf.expand_dims(diff, -1) * tf.expand_dims(diff, -2) * inv_sqr_sigma
             rbf = tf.exp(-0.5 * dist2 * inv_sqr_sigma) # [M, N]
-            div_coeff = rbf * (dist2 * inv_sqr_sigma - (tf.to_float(d) + 2)) * inv_sqr_sigma ** 2 # [M, N]
+            div_coeff = rbf * (dist2 * inv_sqr_sigma - (tf.cast(d, tf.float32) + 2)) * inv_sqr_sigma ** 2 # [M, N]
             K = tf.expand_dims(tf.expand_dims(rbf * inv_sqr_sigma, -1), -1) * (tf.eye(d) - Km)
             if flatten:
                 K = tf.reshape(tf.transpose(K, [0, 2, 1, 3]), [M * d, N * d])

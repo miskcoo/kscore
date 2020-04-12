@@ -36,7 +36,8 @@ class CurlFreeIMQ(BaseKernel):
 
         if compute_divergence:
             imq_5 = imq_3 * imq_2
-            div_coeff = 3 * imq_5 * (5 * dist2 * inv_sqr_sigma * imq_2 - (tf.to_float(d) + 2)) * inv_sqr_sigma ** 2 # [M, N]
+            div_coeff = 3 * imq_5 * (5 * dist2 * inv_sqr_sigma * imq_2 \
+                    - (tf.cast(d, tf.float32) + 2)) * inv_sqr_sigma ** 2 # [M, N]
             divergence = -tf.expand_dims(div_coeff, -1) * diff 
 
         def kernel_op(z):

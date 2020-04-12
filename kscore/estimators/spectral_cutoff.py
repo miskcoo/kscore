@@ -39,16 +39,16 @@ class SpectralCutoffEstimator(ScoreEstimator):
         eigen_values, eigen_vectors = tf.self_adjoint_eig(K)
         if self._keep_rate is not None:
             total_num = tf.shape(K)[0]
-            n_eigen = tf.to_int32(tf.to_float(total_num) * self._keep_rate)
+            n_eigen = tf.cast(tf.cast(total_num, tf.float32) * self._keep_rate, tf.int32)
         else:
-            n_eigen = tf.reduce_sum(tf.to_int32(eigen_values > self._lam))
+            n_eigen = tf.reduce_sum(tf.cast(eigen_values > self._lam, tf.int32))
         # n_eigen = tf.Print(n_eigen, [n_eigen, tf.shape(K)[0]])
         eigen_values = eigen_values[..., -n_eigen:]
 
         # [Md, eigens], or [M, eigens]
         eigen_vectors = eigen_vectors[..., -n_eigen:] / eigen_values
 
-        H_dh = tf.reduce_sum(K_div, axis=-3)  # [M, d]
+        H_dh = tf.reduce_sum(K_div, axis=-2)  # [M, d]
         if self._kernel.kernel_type() == 'diagonal':
             truncated_Kinv = tf.expand_dims(eigen_vectors, -2) * eigen_vectors
             truncated_Kinv = tf.reduce_sum(truncated_Kinv, axis=-1) # [M, M]
@@ -56,7 +56,8 @@ class SpectralCutoffEstimator(ScoreEstimator):
         else:
             H_dh = tf.reshape(H_dh, [-1, 1])   # [Md, 1]
             self._coeff = tf.reduce_sum(eigen_vectors * tf.reduce_sum(
-                eigen_vectors * H_dh, axis=0), axis=-1, keep_dims=True)
+                eigen_vectors * H_dh, axis=0), axis=-1, keepdims=True)
+        self._coeff /= tf.cast(M, tf.float32)
 
     def compute_gradients(self, x):
         Kxq_op = self._kernel.kernel_operator(x, self._samples,
@@ -67,4 +68,4 @@ class SpectralCutoffEstimator(ScoreEstimator):
         else:
             d = tf.shape(x)[-1]
             grads = tf.reshape(Kxq_op.apply(self._coeff), [-1, d])
-        return grads
+        return -grads

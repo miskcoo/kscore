@@ -48,18 +48,18 @@ class NuEstimator(ScoreEstimator):
 
         def get_next(t, a, pa, c, pc):
             # nc <- c <- pc
-            ft = tf.to_float(t)
+            ft = tf.cast(t, tf.float32)
             nu = self._nu
             u = (ft - 1.) * (2. * ft - 3.) * (2. * ft + 2. * nu - 1.) \
                     / ((ft + 2. * nu - 1.) * (2. * ft + 4. * nu - 1.) * (2. * ft + 2. * nu - 3.))
             w = 4. * (2. * ft + 2. * nu - 1.) * (ft + nu - 1.) / ((ft + 2. * nu - 1.) * (2. * ft + 4. * nu - 1.))
-            nc = (1. + u) * c - w * (a * H_dh + K_op.apply(c)) / tf.to_float(M) - u * pc
+            nc = (1. + u) * c - w * (a * H_dh + K_op.apply(c)) / tf.cast(M, tf.float32) - u * pc
             na = (1. + u) * a - u * pa - w
             return (t + 1, na, a, nc, c)
 
         a1 = -(4. * self._nu + 2) / (4. * self._nu + 1)
         ret = tf.while_loop(
-            lambda t, a, pa, c, pc: t <= tf.to_int32(self._iternum),
+            lambda t, a, pa, c, pc: t <= tf.cast(self._iternum, tf.int32),
             get_next,
             loop_vars=[2, a1, 0., tf.zeros_like(H_dh), tf.zeros_like(H_dh)]
         )

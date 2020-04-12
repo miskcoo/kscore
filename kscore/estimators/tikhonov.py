@@ -56,7 +56,7 @@ class TikhonovEstimator(ScoreEstimator):
         self._kernel_hyperparams = kernel_hyperparams
 
         M = tf.shape(samples)[-2]
-        N = tf.to_int32(tf.to_float(M) * self._subsample_rate)
+        N = tf.cast(tf.cast(M, tf.float32) * self._subsample_rate, tf.int32)
         d = tf.shape(samples)[-1]
 
         subsamples = random_choice(samples, N)
@@ -68,7 +68,7 @@ class TikhonovEstimator(ScoreEstimator):
 
         if self._use_cg:
             def apply_kernel(v):
-                return Knm_op.apply(Knm_op.apply_adjoint(v)) / tf.to_float(M) \
+                return Knm_op.apply(Knm_op.apply_adjoint(v)) / tf.cast(M, tf.float32) \
                         + self._lam * Knn_op.apply(v)
 
             linear_operator = collections.namedtuple(
@@ -88,7 +88,7 @@ class TikhonovEstimator(ScoreEstimator):
             # K_inner: [Md, Md]
             Knn = Knn_op.kernel_matrix(flatten=True)
             Knm = Knm_op.kernel_matrix(flatten=True)
-            K_inner = tf.matmul(Knm, Knm, transpose_b=True) / tf.to_float(M) + self._lam * Knn
+            K_inner = tf.matmul(Knm, Knm, transpose_b=True) / tf.cast(M, tf.float32) + self._lam * Knn
             H_dh = tf.reduce_mean(K_div, axis=-2)
 
             if self._kernel.kernel_type() == 'diagonal':
@@ -116,10 +116,10 @@ class TikhonovEstimator(ScoreEstimator):
         if self._use_cg:
             if self._truncated_tikhonov:
                 def apply_kernel(v):
-                    return K_op.apply(K_op.apply(v) / tf.to_float(M) + self._lam * v)
+                    return K_op.apply(K_op.apply(v) / tf.cast(M, tf.float32) + self._lam * v)
             else:
                 def apply_kernel(v):
-                    return K_op.apply(v) + tf.to_float(M) * self._lam * v
+                    return K_op.apply(v) + tf.cast(M, tf.float32) * self._lam * v
 
             linear_operator = collections.namedtuple(
                 "LinearOperator", ["shape", "dtype", "apply", "apply_adjoint"])
@@ -145,9 +145,9 @@ class TikhonovEstimator(ScoreEstimator):
                 H_shape = [M * d, 1]
 
             if self._truncated_tikhonov:
-                K = tf.matmul(K, K) / tf.to_float(M) + self._lam * K + 1.0e-7 * identity
+                K = tf.matmul(K, K) / tf.cast(M, tf.float32) + self._lam * K + 1.0e-7 * identity
             else:
-                K += tf.to_float(M) * self._lam * identity
+                K += tf.cast(M, tf.float32) * self._lam * identity
             H_dh = tf.reshape(H_dh, H_shape) / self._lam
             self._coeff = tf.reshape(tf.linalg.solve(K, H_dh), [M * d, 1])
 

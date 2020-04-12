@@ -26,7 +26,7 @@ class LandweberEstimator(ScoreEstimator):
         else:
             iternum = int(1.0 / lam) + 1
         super().__init__(lam, kernel)
-        self._stepsize = tf.to_float(stepsize)
+        self._stepsize = tf.cast(stepsize, tf.float32)
         self._iternum = iternum
 
     def fit(self, samples, kernel_hyperparams=None):
@@ -47,16 +47,16 @@ class LandweberEstimator(ScoreEstimator):
 
         def get_next(t, c):
             nc = c - self._stepsize * K_op.apply(c) \
-                    - (tf.to_float(t)) * self._stepsize ** 2 * H_dh
+                    - (tf.cast(t, tf.float32)) * self._stepsize ** 2 * H_dh
             return (t + 1, nc)
 
         t, coeff = tf.while_loop(
-            lambda t, c: t < tf.to_int32(self._iternum),
+            lambda t, c: t < tf.cast(self._iternum, tf.int32),
             get_next,
             loop_vars=[1, tf.zeros_like(H_dh)]
         )
 
-        self._coeff = (-tf.to_float(t) * self._stepsize, coeff)
+        self._coeff = (-tf.cast(t, tf.float32) * self._stepsize, coeff)
 
     def compute_gradients(self, x):
         d = tf.shape(x)[-1]
