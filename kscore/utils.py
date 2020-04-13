@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import tensorflow as tf
 
 def median_heuristic(x, y):
@@ -37,3 +38,47 @@ def random_choice(inputs, n_samples):
     ind = tf.squeeze(ind, 0, name="random_choice_ind")  # (n_samples,)
 
     return tf.gather(inputs, ind, name="random_choice")
+
+def conjugate_gradient(operator,
+                       rhs,
+                       x=None,
+                       tol=1e-4,
+                       max_iter=40):
+    '''From tensorflow/contrib/solvers/linear_equations.py'''
+
+    cg_state = collections.namedtuple("CGState", ["i", "x", "r", "p", "gamma"])
+  
+    def stopping_criterion(i, state):
+        return tf.logical_and(i < max_iter, tf.norm(state.r) > tol)
+  
+    def cg_step(i, state):
+        z = operator.apply(state.p)
+        alpha = state.gamma / tf.reduce_sum(state.p * z)
+        x = state.x + alpha * state.p
+        r = state.r - alpha * z
+        gamma = tf.reduce_sum(r * r)
+        beta = gamma / state.gamma
+        p = r + beta * state.p
+        return i + 1, cg_state(i + 1, x, r, p, gamma)
+  
+    n = operator.shape[1:]
+    rhs = tf.expand_dims(rhs, -1)
+    if x is None:
+        x = tf.expand_dims(tf.zeros(n, dtype=rhs.dtype.base_dtype), -1)
+        r0 = rhs
+    else:
+        x = tf.expand_dims(x, -1)
+        r0 = rhs - operator.apply(x)
+
+    p0 = r0
+    gamma0 = tf.reduce_sum(r0 * p0)
+    tol *= tf.norm(r0)
+    i = tf.constant(0, dtype=dtypes.int32)
+    state = cg_state(i=i, x=x, r=r0, p=p0, gamma=gamma0)
+    _, state = tf.while_loop(stopping_criterion, cg_step, [i, state])
+    return cg_state(
+            state.i,
+            x=array_ops.squeeze(state.x),
+            r=array_ops.squeeze(state.r),
+            p=array_ops.squeeze(state.p),
+            gamma=state.gamma)

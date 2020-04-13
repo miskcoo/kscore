@@ -7,9 +7,8 @@ from __future__ import print_function
 
 import collections
 import tensorflow as tf
-import tensorflow.contrib.solvers as solvers
 
-from kscore.utils import random_choice
+from kscore.utils import random_choice, conjugate_gradient
 from kscore.kernels import CurlFreeIMQ
 from .base import ScoreEstimator
 
@@ -98,7 +97,7 @@ class TikhonovEstimator(ScoreEstimator):
             )
             H_dh = tf.reduce_mean(K_div, axis=-2)
             H_dh = tf.reshape(H_dh, [N * d])
-            conj_ret = solvers.linear_equations.conjugate_gradient(
+            conj_ret = conjugate_gradient(
                     Kcg_op, H_dh, max_iter=self._maxiter_cg, tol=self._tol_cg)
             self._coeff = tf.reshape(conj_ret.x, [N * d, 1])
         else:
@@ -148,7 +147,7 @@ class TikhonovEstimator(ScoreEstimator):
             )
             H_dh = tf.reduce_mean(K_div, axis=-2)
             H_dh = tf.reshape(H_dh, [M * d]) / self._lam
-            conj_ret = solvers.linear_equations.conjugate_gradient(
+            conj_ret = conjugate_gradient(
                     Kcg_op, H_dh, max_iter=self._maxiter_cg, tol=self._tol_cg)
             self._coeff = tf.reshape(conj_ret.x, [M * d, 1])
         else:
