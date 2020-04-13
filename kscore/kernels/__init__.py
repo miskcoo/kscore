@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from .curlfree import CurlFreeKernel
 from .curlfree_imq import CurlFreeIMQ
 from .curlfree_gaussian import CurlFreeGaussian
 from .diagonal import DiagonalKernel
