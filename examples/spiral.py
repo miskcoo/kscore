@@ -9,7 +9,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
-from scipy import stats
 from kscore import *
 
 def generate_data(n_samples):
@@ -63,7 +62,7 @@ def main():
     samples = generate_data(n_samples)
     x, x_energy = evaluation_space(size, energy_size, lower_box, upper_box)
 
-    estimator = NuEstimator(lam=0.00001, kernel=CurlFreeIMQ())
+    estimator = NuEstimator(lam=0.00001, kernel=CurlFreeIMQp(0.5))
     estimator.fit(samples, kernel_hyperparams=kernel_width)
 
     energy = estimator.compute_energy(x_energy)

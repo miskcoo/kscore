@@ -14,12 +14,13 @@ class SpectralCutoffEstimator(ScoreEstimator):
     def __init__(self,
                  lam=None,
                  keep_rate=None,
-                 kernel=CurlFreeIMQ()):
+                 kernel=CurlFreeIMQ(),
+                 dtype=tf.float32):
         if lam is not None and keep_rate is not None:
             raise RuntimeError('Cannot specify `lam` and `keep_rate` simultaneously.')
         if lam is None and keep_rate is None:
             raise RuntimeError('Both `lam` and `keep_rate` are `None`.')
-        super().__init__(lam, kernel)
+        super().__init__(lam, kernel, dtype)
         self._keep_rate = keep_rate
 
     def fit(self, samples, kernel_hyperparams=None):
@@ -35,10 +36,10 @@ class SpectralCutoffEstimator(ScoreEstimator):
                 kernel_hyperparams=kernel_hyperparams)
         K = K_op.kernel_matrix(flatten=True)
 
-        eigen_values, eigen_vectors = tf.self_adjoint_eig(K / tf.cast(M, tf.float32))
+        eigen_values, eigen_vectors = tf.self_adjoint_eig(K / tf.cast(M, self._dtype))
         if self._keep_rate is not None:
             total_num = tf.shape(K)[0]
-            n_eigen = tf.cast(tf.cast(total_num, tf.float32) * self._keep_rate, tf.int32)
+            n_eigen = tf.cast(tf.cast(total_num, self._dtype) * self._keep_rate, tf.int32)
         else:
             n_eigen = tf.reduce_sum(tf.cast(eigen_values > self._lam, tf.int32))
         # eigen_values = tf.Print(eigen_values, [eigen_values[0], eigen_values[-1]])
@@ -56,7 +57,7 @@ class SpectralCutoffEstimator(ScoreEstimator):
             H_dh = tf.reshape(H_dh, [-1, 1])   # [Md, 1]
             self._coeff = tf.reduce_sum(eigen_vectors * tf.reduce_sum(
                 eigen_vectors * H_dh, axis=0), axis=-1, keepdims=True)
-        self._coeff /= tf.cast(M, tf.float32)
+        self._coeff /= tf.cast(M, self._dtype)
 
     def _compute_energy(self, x):
         Kxq = self._kernel.kernel_energy(x, self._samples,

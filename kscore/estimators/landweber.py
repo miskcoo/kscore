@@ -15,17 +15,18 @@ class LandweberEstimator(ScoreEstimator):
                  lam=None,
                  iternum=None,
                  kernel=CurlFreeIMQ(),
-                 stepsize=1.0e-2):
+                 stepsize=1.0e-2,
+                 dtype=tf.float32):
         if lam is not None and iternum is not None:
             raise RuntimeError('Cannot specify `lam` and `iternum` simultaneously.')
         if lam is None and iternum is None:
             raise RuntimeError('Both `lam` and `iternum` are `None`.')
         if iternum is not None:
-            lam = 1.0 / tf.cast(iternum, tf.float32)
+            lam = 1.0 / tf.cast(iternum, dtype)
         else:
             iternum = tf.cast(1.0 / lam, tf.int32) + 1
-        super().__init__(lam, kernel)
-        self._stepsize = tf.cast(stepsize, tf.float32)
+        super().__init__(lam, kernel, dtype)
+        self._stepsize = tf.cast(stepsize, dtype)
         self._iternum = iternum
 
     def fit(self, samples, kernel_hyperparams=None):
@@ -46,7 +47,7 @@ class LandweberEstimator(ScoreEstimator):
 
         def get_next(t, c):
             nc = c - self._stepsize * K_op.apply(c) \
-                    - (tf.cast(t, tf.float32)) * self._stepsize ** 2 * H_dh
+                    - (tf.cast(t, self._dtype)) * self._stepsize ** 2 * H_dh
             return (t + 1, nc)
 
         t, coeff = tf.while_loop(
@@ -55,7 +56,7 @@ class LandweberEstimator(ScoreEstimator):
             loop_vars=[1, tf.zeros_like(H_dh)]
         )
 
-        self._coeff = (-tf.cast(t, tf.float32) * self._stepsize, coeff)
+        self._coeff = (-tf.cast(t, self._dtype) * self._stepsize, coeff)
 
     def _compute_energy(self, x):
         Kxq, div_xq = self._kernel.kernel_energy(x, self._samples,

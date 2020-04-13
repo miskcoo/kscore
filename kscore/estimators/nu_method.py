@@ -16,16 +16,17 @@ class NuEstimator(ScoreEstimator):
                  lam=None,
                  iternum=None,
                  kernel=CurlFreeIMQ(),
-                 nu=1.0):
+                 nu=1.0,
+                 dtype=tf.float32):
         if lam is not None and iternum is not None:
             raise RuntimeError('Cannot specify `lam` and `iternum` simultaneously.')
         if lam is None and iternum is None:
             raise RuntimeError('Both `lam` and `iternum` are `None`.')
         if iternum is not None:
-            lam = 1.0 / tf.cast(iternum, tf.float32) ** 2
+            lam = 1.0 / tf.cast(iternum, self._dtype) ** 2
         else:
             iternum = tf.cast(1.0 / tf.sqrt(lam), tf.int32) + 1
-        super().__init__(lam, kernel)
+        super().__init__(lam, kernel, dtype)
         self._nu = nu
         self._iternum = iternum
 
@@ -46,12 +47,12 @@ class NuEstimator(ScoreEstimator):
 
         def get_next(t, a, pa, c, pc):
             # nc <- c <- pc
-            ft = tf.cast(t, tf.float32)
+            ft = tf.cast(t, self._dtype)
             nu = self._nu
             u = (ft - 1.) * (2. * ft - 3.) * (2. * ft + 2. * nu - 1.) \
                     / ((ft + 2. * nu - 1.) * (2. * ft + 4. * nu - 1.) * (2. * ft + 2. * nu - 3.))
             w = 4. * (2. * ft + 2. * nu - 1.) * (ft + nu - 1.) / ((ft + 2. * nu - 1.) * (2. * ft + 4. * nu - 1.))
-            nc = (1. + u) * c - w * (a * H_dh + K_op.apply(c)) / tf.cast(M, tf.float32) - u * pc
+            nc = (1. + u) * c - w * (a * H_dh + K_op.apply(c)) / tf.cast(M, self._dtype) - u * pc
             na = (1. + u) * a - u * pa - w
             return (t + 1, na, a, nc, c)
 

@@ -13,11 +13,12 @@ from .base import ScoreEstimator
 class SteinEstimator(ScoreEstimator):
     def __init__(self,
                  lam,
-                 kernel=DiagonalIMQ()):
+                 kernel=DiagonalIMQ(),
+                 dtype=tf.float32):
         # TODO: Implement curl-free kernels
         if kernel.kernel_type() != 'diagonal':
             raise NotImplementedError('Only support diagonal kernels.')
-        super().__init__(lam, kernel)
+        super().__init__(lam, kernel, dtype)
 
     def fit(self, samples, kernel_hyperparams=None):
         if kernel_hyperparams is None:
@@ -31,7 +32,7 @@ class SteinEstimator(ScoreEstimator):
         K = K_op.kernel_matrix(flatten=True)
         # In the Stein estimator (Li & Turner, 2018), the regularization parameter is divided
         # by $M^2$, for the unified meaning of $\lambda$, we multiply this back.
-        Mlam = tf.cast(M, tf.float32) ** 2 * self._lam
+        Mlam = tf.cast(M, self._dtype) ** 2 * self._lam
         Kinv = tf.matrix_inverse(K + Mlam * tf.eye(M))
         H_dh = tf.reduce_sum(K_div, axis=-2)
         grads = -tf.matmul(Kinv, H_dh)

@@ -37,7 +37,7 @@ class SquareCurlFreeKernel(BaseKernel):
         energy_k = -2. * tf.expand_dims(G_1st, -1) * r
 
         if compute_divergence:
-            divergence = tf.cast(2 * d, tf.float32) * G_1st \
+            divergence = tf.cast(2 * d, G_1st.dtype.base_dtype) * G_1st \
                     + 4. * norm_rr * G_2nd
             return energy_k, divergence
         return energy_k
@@ -49,7 +49,7 @@ class SquareCurlFreeKernel(BaseKernel):
         G_2nd = tf.expand_dims(G_2nd, -1)   # [M, N, 1]
 
         if compute_divergence:
-            coeff = (tf.cast(d, tf.float32) + 2) * G_2nd \
+            coeff = (tf.cast(d, G_1st.dtype.base_dtype) + 2) * G_2nd \
                     + 2. * tf.expand_dims(norm_rr * G_3rd, -1)
             divergence = 4. * coeff * r
 

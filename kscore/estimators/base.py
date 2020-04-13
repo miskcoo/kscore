@@ -6,12 +6,13 @@ from __future__ import division
 from __future__ import print_function
 
 class ScoreEstimator:
-    def __init__(self, lam, kernel):
+    def __init__(self, lam, kernel, dtype):
         self._lam = lam
         self._kernel = kernel
         self._coeff = None
         self._kernel_hyperparams = None
         self._samples = None
+        self._dtype = dtype
 
     def fit(self, samples, kernel_hyperparams):
         raise NotImplementedError('Not implemented score estimator!')
