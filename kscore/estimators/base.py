@@ -20,4 +20,9 @@ class ScoreEstimator:
         raise NotImplementedError('Not implemented score estimator!')
 
     def compute_energy(self, x):
+        if self._kernel.kernel_type() != 'curl-free':
+            raise RuntimeError('Only curl-free kernels have well-defined energy.')
+        return self._compute_energy(x)
+
+    def _compute_energy(self, x):
         raise NotImplementedError('Not implemented score estimator!')

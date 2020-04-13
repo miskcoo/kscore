@@ -67,9 +67,3 @@ class DiagonalKernel(BaseKernel):
             return op, divergence
         return op
 
-    def kernel_matrix(self, x, y, kernel_hyperparams=None, flatten=True, compute_divergence=True):
-        if compute_divergence:
-            op, divergence = self.kernel_operator(x, y, True, kernel_hyperparams)
-            return op.kernel_matrix(flatten), divergence
-        op = self.kernel_operator(x, y, False, kernel_hyperparams)
-        return op.kernel_matrix(flatten)

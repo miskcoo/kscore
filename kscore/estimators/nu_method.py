@@ -64,6 +64,14 @@ class NuEstimator(ScoreEstimator):
 
         self._coeff = (ret[1], ret[3])
 
+    def _compute_energy(self, x):
+        Kxq, div_xq = self._kernel.kernel_energy(x, self._samples,
+                kernel_hyperparams=self._kernel_hyperparams)
+        Kxq = tf.reshape(Kxq, [tf.shape(x)[-2], -1])
+        div_xq = tf.reduce_mean(div_xq, axis=-1) * self._coeff[0]
+        energy = tf.reshape(tf.matmul(Kxq, self._coeff[1]), [-1]) + div_xq
+        return energy
+
     def compute_gradients(self, x):
         d = tf.shape(x)[-1]
         Kxq_op, div_xq = self._kernel.kernel_operator(x, self._samples,

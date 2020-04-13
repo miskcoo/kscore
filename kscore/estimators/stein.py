@@ -16,7 +16,7 @@ class SteinEstimator(ScoreEstimator):
                  kernel=DiagonalIMQ()):
         # TODO: Implement curl-free kernels
         if kernel.kernel_type() != 'diagonal':
-            raise RuntimeError('Only support diagonal kernels.')
+            raise NotImplementedError('Only support diagonal kernels.')
         super().__init__(lam, kernel)
 
     def fit(self, samples, kernel_hyperparams=None):
@@ -38,6 +38,7 @@ class SteinEstimator(ScoreEstimator):
         self._coeff = { 'Kinv': Kinv, 'grads': grads, 'Mlam': Mlam }
 
     def _compute_gradients_one(self, x):
+        # Section 3.4 in Li & Turner (2018), the our-of-sample extension.
         Kxx = self._kernel.kernel_matrix(x, x,
                 kernel_hyperparams=self._kernel_hyperparams, compute_divergence=False)
         Kqx, Kqx_div = self._kernel.kernel_matrix(self._samples, x,

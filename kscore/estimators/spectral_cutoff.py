@@ -41,6 +41,7 @@ class SpectralCutoffEstimator(ScoreEstimator):
             n_eigen = tf.cast(tf.cast(total_num, tf.float32) * self._keep_rate, tf.int32)
         else:
             n_eigen = tf.reduce_sum(tf.cast(eigen_values > self._lam, tf.int32))
+        # eigen_values = tf.Print(eigen_values, [eigen_values[0], eigen_values[-1]])
         eigen_values = eigen_values[..., -n_eigen:]
 
         # [Md, eigens], or [M, eigens]
@@ -56,6 +57,14 @@ class SpectralCutoffEstimator(ScoreEstimator):
             self._coeff = tf.reduce_sum(eigen_vectors * tf.reduce_sum(
                 eigen_vectors * H_dh, axis=0), axis=-1, keepdims=True)
         self._coeff /= tf.cast(M, tf.float32)
+
+    def _compute_energy(self, x):
+        Kxq = self._kernel.kernel_energy(x, self._samples,
+                kernel_hyperparams=self._kernel_hyperparams,
+                compute_divergence=False)
+        Kxq = tf.reshape(Kxq, [tf.shape(x)[-2], -1])
+        energy = tf.matmul(Kxq, self._coeff)
+        return -tf.reshape(energy, [-1])
 
     def compute_gradients(self, x):
         Kxq_op = self._kernel.kernel_operator(x, self._samples,

@@ -16,6 +16,30 @@ class CurlFreeGaussian(BaseKernel):
     def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__('curl-free', kernel_hyperparams, heuristic_hyperparams)
 
+    def kernel_energy(self, x, y, kernel_hyperparams=None, compute_divergence=True):
+        if kernel_hyperparams is None:
+            kernel_width = self.heuristic_hyperparams(x, y)
+        else:
+            kernel_width = kernel_hyperparams
+
+        x_m = tf.expand_dims(x, -2)  # [M, 1, d]
+        y_m = tf.expand_dims(y, -3)  # [1, N, d]
+        d = tf.shape(x)[-1]
+        M = tf.shape(x)[-2]
+        N = tf.shape(y)[-2]
+        diff = x_m - y_m  # [M, N, d]
+        dist2 = tf.reduce_sum(diff * diff, -1)  # [M, N]
+        inv_sqr_sigma = 1.0 / tf.square(kernel_width)
+        rbf = tf.exp(-0.5 * dist2 * inv_sqr_sigma) # [M, N]
+
+        coeff = rbf * inv_sqr_sigma
+        energy_k = tf.expand_dims(coeff, -1) * diff
+        if compute_divergence:
+            divergence = -tf.cast(d - 1, tf.float32) * coeff \
+                    + inv_sqr_sigma * rbf * (dist2 * inv_sqr_sigma - 1.)
+            return energy_k, divergence
+        return energy_k
+
     def kernel_operator(self, x, y, kernel_hyperparams=None, compute_divergence=True):
         if kernel_hyperparams is None:
             kernel_width = self.heuristic_hyperparams(x, y)
@@ -89,10 +113,3 @@ class CurlFreeGaussian(BaseKernel):
         if compute_divergence:
             return op, divergence
         return op
-
-    def kernel_matrix(self, x, y, kernel_hyperparams=None, flatten=True, compute_divergence=True):
-        if compute_divergence:
-            op, divergence = self.kernel_operator(x, y, True, kernel_hyperparams)
-            return op.kernel_matrix(flatten), divergence
-        op = self.kernel_operator(x, y, False, kernel_hyperparams)
-        return op.kernel_matrix(flatten)

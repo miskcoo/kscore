@@ -33,6 +33,23 @@ class TikhonovEstimator(ScoreEstimator):
         else:
             return self._fit_subsample(samples, kernel_hyperparams)
 
+    def _compute_energy(self, x):
+        d = tf.shape(x)[-1]
+        if self._subsample_rate is None and not self._truncated_tikhonov:
+            Kxq, div_xq = self._kernel.kernel_energy(x, self._samples,
+                    kernel_hyperparams=self._kernel_hyperparams)
+            div_xq = tf.reduce_mean(div_xq, axis=-1) / self._lam
+            Kxq = tf.reshape(Kxq, [tf.shape(x)[-2], -1])
+            energy = tf.matmul(Kxq, self._coeff)
+            energy = tf.reshape(energy, [-1]) - div_xq
+        else:
+            Kxq = self._kernel.kernel_energy(x, self._samples,
+                    kernel_hyperparams=self._kernel_hyperparams, compute_divergence=False)
+            Kxq = tf.reshape(Kxq, [tf.shape(x)[-2], -1])
+            energy = -tf.matmul(Kxq, self._coeff)
+            energy = tf.reshape(energy, [-1])
+        return energy
+
     def compute_gradients(self, x):
         d = tf.shape(x)[-1]
         if self._subsample_rate is None and not self._truncated_tikhonov:
@@ -42,7 +59,6 @@ class TikhonovEstimator(ScoreEstimator):
             grads = Kxq_op.apply(self._coeff)
             grads = tf.reshape(grads, [-1, d]) - div_xq
         else:
-            d = tf.shape(x)[-1]
             Kxq_op = self._kernel.kernel_operator(x, self._samples,
                     kernel_hyperparams=self._kernel_hyperparams, compute_divergence=False)
             grads = -Kxq_op.apply(self._coeff)
