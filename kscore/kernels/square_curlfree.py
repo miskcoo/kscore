@@ -11,7 +11,7 @@ import tensorflow as tf
 from .base import BaseKernel
 from kscore.utils import median_heuristic
 
-class CurlFreeKernel(BaseKernel):
+class SquareCurlFreeKernel(BaseKernel):
 
     def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__('curl-free', kernel_hyperparams, heuristic_hyperparams)
