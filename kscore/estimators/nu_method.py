@@ -22,10 +22,9 @@ class NuEstimator(ScoreEstimator):
         if lam is None and iternum is None:
             raise RuntimeError('Both `lam` and `iternum` are `None`.')
         if iternum is not None:
-            iternum = int(iternum + 0.5)
-            lam = 1.0 / iternum ** 2
+            lam = 1.0 / tf.cast(iternum, tf.float32) ** 2
         else:
-            iternum = int(1.0 / math.sqrt(lam)) + 1
+            iternum = tf.cast(1.0 / tf.sqrt(lam), tf.int32) + 1
         super().__init__(lam, kernel)
         self._nu = nu
         self._iternum = iternum

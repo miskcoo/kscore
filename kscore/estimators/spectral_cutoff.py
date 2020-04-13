@@ -36,7 +36,7 @@ class SpectralCutoffEstimator(ScoreEstimator):
                 kernel_hyperparams=kernel_hyperparams)
         K = K_op.kernel_matrix(flatten=True)
 
-        eigen_values, eigen_vectors = tf.self_adjoint_eig(K)
+        eigen_values, eigen_vectors = tf.self_adjoint_eig(K / tf.cast(M, tf.float32))
         if self._keep_rate is not None:
             total_num = tf.shape(K)[0]
             n_eigen = tf.cast(tf.cast(total_num, tf.float32) * self._keep_rate, tf.int32)
@@ -48,7 +48,7 @@ class SpectralCutoffEstimator(ScoreEstimator):
         # [Md, eigens], or [M, eigens]
         eigen_vectors = eigen_vectors[..., -n_eigen:] / eigen_values
 
-        H_dh = tf.reduce_sum(K_div, axis=-2)  # [M, d]
+        H_dh = tf.reduce_mean(K_div, axis=-2)  # [M, d]
         if self._kernel.kernel_type() == 'diagonal':
             truncated_Kinv = tf.expand_dims(eigen_vectors, -2) * eigen_vectors
             truncated_Kinv = tf.reduce_sum(truncated_Kinv, axis=-1) # [M, M]
