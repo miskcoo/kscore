@@ -73,12 +73,12 @@ def conjugate_gradient(operator,
     p0 = r0
     gamma0 = tf.reduce_sum(r0 * p0)
     tol *= tf.norm(r0)
-    i = tf.constant(0, dtype=dtypes.int32)
+    i = tf.constant(0, dtype=tf.int32)
     state = cg_state(i=i, x=x, r=r0, p=p0, gamma=gamma0)
     _, state = tf.while_loop(stopping_criterion, cg_step, [i, state])
     return cg_state(
             state.i,
-            x=array_ops.squeeze(state.x),
-            r=array_ops.squeeze(state.r),
-            p=array_ops.squeeze(state.p),
+            x=tf.squeeze(state.x),
+            r=tf.squeeze(state.r),
+            p=tf.squeeze(state.p),
             gamma=state.gamma)

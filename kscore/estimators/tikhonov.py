@@ -18,7 +18,7 @@ class TikhonovEstimator(ScoreEstimator):
                  kernel=CurlFreeIMQ(),
                  truncated_tikhonov=False,
                  subsample_rate=None,
-                 use_cg=False,
+                 use_cg=True,
                  tol_cg=1.0e-4,
                  maxiter_cg=40):
         super().__init__(lam, kernel)
