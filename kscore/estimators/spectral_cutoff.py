@@ -23,7 +23,6 @@ class SpectralCutoffEstimator(ScoreEstimator):
         self._keep_rate = keep_rate
 
     def fit(self, samples, kernel_hyperparams=None):
-        # samples: [M, d]
         if kernel_hyperparams is None:
             kernel_hyperparams = self._kernel.heuristic_hyperparams(samples, samples)
         self._kernel_hyperparams = kernel_hyperparams
@@ -42,7 +41,6 @@ class SpectralCutoffEstimator(ScoreEstimator):
             n_eigen = tf.cast(tf.cast(total_num, tf.float32) * self._keep_rate, tf.int32)
         else:
             n_eigen = tf.reduce_sum(tf.cast(eigen_values > self._lam, tf.int32))
-        # n_eigen = tf.Print(n_eigen, [n_eigen, tf.shape(K)[0]])
         eigen_values = eigen_values[..., -n_eigen:]
 
         # [Md, eigens], or [M, eigens]

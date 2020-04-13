@@ -30,7 +30,6 @@ class NuEstimator(ScoreEstimator):
         self._iternum = iternum
 
     def fit(self, samples, kernel_hyperparams=None):
-        # samples: [M, d]
         if kernel_hyperparams is None:
             kernel_hyperparams = self._kernel.heuristic_hyperparams(samples, samples)
         self._kernel_hyperparams = kernel_hyperparams

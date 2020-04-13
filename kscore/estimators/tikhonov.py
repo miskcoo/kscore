@@ -50,7 +50,6 @@ class TikhonovEstimator(ScoreEstimator):
         return grads
 
     def _fit_subsample(self, samples, kernel_hyperparams=None):
-        # samples: [M, d]
         if kernel_hyperparams is None:
             kernel_hyperparams = self._kernel.heuristic_hyperparams(samples, samples)
         self._kernel_hyperparams = kernel_hyperparams
@@ -85,7 +84,6 @@ class TikhonovEstimator(ScoreEstimator):
                     Kcg_op, H_dh, max_iter=self._maxiter_cg)
             self._coeff = tf.reshape(conj_ret.x, [N * d, 1])
         else:
-            # K_inner: [Md, Md]
             Knn = Knn_op.kernel_matrix(flatten=True)
             Knm = Knm_op.kernel_matrix(flatten=True)
             K_inner = tf.matmul(Knm, Knm, transpose_b=True) / tf.cast(M, tf.float32) + self._lam * Knn
@@ -95,7 +93,8 @@ class TikhonovEstimator(ScoreEstimator):
                 K_inner += 1.0e-7 * tf.eye(N)
                 H_dh = tf.reshape(H_dh, [N, d])
             else:
-                # This is necessary for numerical stability
+                # The original Nystrom KEF estimator (Sutherland et al., 2018).
+                # Adding the small identity matrix is necessary for numerical stability.
                 K_inner += 1.0e-7 * tf.eye(N * d)
                 H_dh = tf.reshape(H_dh, [N * d, 1])
             self._coeff = tf.reshape(tf.linalg.solve(K_inner, H_dh), [N * d, 1])
@@ -145,8 +144,12 @@ class TikhonovEstimator(ScoreEstimator):
                 H_shape = [M * d, 1]
 
             if self._truncated_tikhonov:
-                K = tf.matmul(K, K) / tf.cast(M, tf.float32) + self._lam * K + 1.0e-7 * identity
+                # The Nystrom version of KEF with full samples.
+                # See Example 3.6 for more details.
+                K = tf.matmul(K, K) / tf.cast(M, tf.float32) \
+                        + self._lam * K + 1.0e-7 * identity
             else:
+                # The original KEF estimator (Sriperumbudur et al., 2017).
                 K += tf.cast(M, tf.float32) * self._lam * identity
             H_dh = tf.reshape(H_dh, H_shape) / self._lam
             self._coeff = tf.reshape(tf.linalg.solve(K, H_dh), [M * d, 1])
