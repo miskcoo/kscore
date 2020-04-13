@@ -20,9 +20,11 @@ class TikhonovEstimator(ScoreEstimator):
                  truncated_tikhonov=False,
                  subsample_rate=None,
                  use_cg=False,
+                 tol_cg=1.0e-4,
                  maxiter_cg=40):
         super().__init__(lam, kernel)
         self._use_cg = use_cg
+        self._tol_cg = tol_cg
         self._subsample_rate = subsample_rate
         self._maxiter_cg = maxiter_cg
         self._truncated_tikhonov = truncated_tikhonov
@@ -97,7 +99,7 @@ class TikhonovEstimator(ScoreEstimator):
             H_dh = tf.reduce_mean(K_div, axis=-2)
             H_dh = tf.reshape(H_dh, [N * d])
             conj_ret = solvers.linear_equations.conjugate_gradient(
-                    Kcg_op, H_dh, max_iter=self._maxiter_cg)
+                    Kcg_op, H_dh, max_iter=self._maxiter_cg, tol=self._tol_cg)
             self._coeff = tf.reshape(conj_ret.x, [N * d, 1])
         else:
             Knn = Knn_op.kernel_matrix(flatten=True)
@@ -147,7 +149,7 @@ class TikhonovEstimator(ScoreEstimator):
             H_dh = tf.reduce_mean(K_div, axis=-2)
             H_dh = tf.reshape(H_dh, [M * d]) / self._lam
             conj_ret = solvers.linear_equations.conjugate_gradient(
-                    Kcg_op, H_dh, max_iter=self._maxiter_cg)
+                    Kcg_op, H_dh, max_iter=self._maxiter_cg, tol=self._tol_cg)
             self._coeff = tf.reshape(conj_ret.x, [M * d, 1])
         else:
             K = K_op.kernel_matrix(flatten=True)
