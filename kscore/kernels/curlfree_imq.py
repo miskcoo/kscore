@@ -8,10 +8,10 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
-from .square_curlfree import SquareCurlFreeKernel
+from .square_curlfree import SquareCurlFree
 from kscore.utils import median_heuristic
 
-class CurlFreeIMQ(SquareCurlFreeKernel):
+class CurlFreeIMQ(SquareCurlFree):
     def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__(kernel_hyperparams, heuristic_hyperparams)
 
@@ -24,7 +24,7 @@ class CurlFreeIMQ(SquareCurlFreeKernel):
         G_3rd = -2.5 * imq_2 * inv_sqr_sigma * G_2nd
         return r, norm_rr, G_1st, G_2nd, G_3rd
 
-class CurlFreeIMQp(SquareCurlFreeKernel):
+class CurlFreeIMQp(SquareCurlFree):
     def __init__(self, p=0.5, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__(kernel_hyperparams, heuristic_hyperparams)
         self._p = p

@@ -8,9 +8,9 @@ from __future__ import print_function
 import tensorflow as tf
 
 from kscore.kernels import CurlFreeIMQ
-from .base import ScoreEstimator
+from .base import Base
 
-class LandweberEstimator(ScoreEstimator):
+class Landweber(Base):
     def __init__(self,
                  lam=None,
                  iternum=None,

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .tikhonov import TikhonovEstimator
-from .landweber import LandweberEstimator
-from .nu_method import NuEstimator
-from .spectral_cutoff import SpectralCutoffEstimator
-from .stein import SteinEstimator
+from .tikhonov import Tikhonov
+from .landweber import Landweber
+from .nu_method import NuMethod
+from .spectral_cutoff import SpectralCutoff
+from .stein import Stein

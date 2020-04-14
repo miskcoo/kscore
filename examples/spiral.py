@@ -11,7 +11,7 @@ import tensorflow as tf
 import numpy as np
 import argparse
 import sys
-from kscore import *
+import kscore
 
 def generate_data(n_samples):
     theta = tf.random.uniform([n_samples], minval=3.0, maxval=15.0)
@@ -45,24 +45,24 @@ def clip_energy(energy, threshold=24):
 
 def get_estimator(args):
     kernel_dicts = {
-        'curlfree_imq': CurlFreeIMQ(),
-        'curlfree_rbf': CurlFreeGaussian(),
-        'diagonal_imq': DiagonalIMQ(),
-        'diagonal_rbf': DiagonalGaussian(),
+        'curlfree_imq': kscore.kernels.CurlFreeIMQ(),
+        'curlfree_rbf': kscore.kernels.CurlFreeGaussian(),
+        'diagonal_imq': kscore.kernels.DiagonalIMQ(),
+        'diagonal_rbf': kscore.kernels.DiagonalGaussian(),
     }
 
     estimator_dicts = {
-        'tikhonov': TikhonovEstimator,
-        'nu': NuEstimator,
-        'landweber': LandweberEstimator,
-        'spectral_cutoff': SpectralCutoffEstimator,
-        'stein': SteinEstimator,
+        'tikhonov': kscore.estimators.Tikhonov,
+        'nu': kscore.estimators.NuMethod,
+        'landweber': kscore.estimators.Landweber,
+        'spectral_cutoff': kscore.estimators.SpectralCutoff,
+        'stein': kscore.estimators.Stein,
     }
 
     kernel = kernel_dicts[args.kernel]
 
     if args.estimator == 'tikhonov_nystrom':
-        estimator = TikhonovEstimator(lam=args.lam,
+        estimator = kscore.estimators.Tikhonov(lam=args.lam,
                 subsample_rate=args.subsample_rate,
                 kernel=kernel_dicts[args.kernel])
     else:
@@ -77,7 +77,7 @@ def main(args):
     kernel_width = 8.0
     n_samples = args.n_samples
     size, energy_size = 25, 300
-    lower_box, upper_box = -32, 32
+    lower_box, upper_box = -args.plot_range, args.plot_range
 
     samples = generate_data(n_samples)
     x = evaluation_space(size, lower_box, upper_box)
@@ -125,6 +125,7 @@ if __name__ == "__main__":
                 'curlfree_rbf', 'diagonal_imq', 'diagonal_rbf'])
     parser.add_argument('--subsample_rate', default=None, type=float,
             help='subsample rate used in the Nystrom approimation.')
+    parser.add_argument('--plot_range', default=32, type=int)
     parser.add_argument('--clip_energy', default=True, type=bool,
             help='whether to clip the energy function.')
     parser.add_argument('--clip_threshold', default=24, type=int)

@@ -9,9 +9,9 @@ import tensorflow as tf
 import math
 
 from kscore.kernels import CurlFreeIMQ
-from .base import ScoreEstimator
+from .base import Base
 
-class NuEstimator(ScoreEstimator):
+class NuMethod(Base):
     def __init__(self,
                  lam=None,
                  iternum=None,

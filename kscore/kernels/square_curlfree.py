@@ -8,10 +8,10 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
-from .base import BaseKernel
+from .base import Base
 from kscore.utils import median_heuristic
 
-class SquareCurlFreeKernel(BaseKernel):
+class SquareCurlFree(Base):
 
     def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__('curl-free', kernel_hyperparams, heuristic_hyperparams)

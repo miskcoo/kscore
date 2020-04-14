@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-class BaseKernel:
+class Base:
 
     def __init__(self, kernel_type, kernel_hyperparams, heuristic_hyperparams):
         if kernel_hyperparams is not None:

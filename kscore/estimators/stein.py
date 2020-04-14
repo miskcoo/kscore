@@ -8,9 +8,9 @@ from __future__ import print_function
 import tensorflow as tf
 
 from kscore.kernels import DiagonalIMQ
-from .base import ScoreEstimator
+from .base import Base
 
-class SteinEstimator(ScoreEstimator):
+class Stein(Base):
     def __init__(self,
                  lam,
                  kernel=DiagonalIMQ(),

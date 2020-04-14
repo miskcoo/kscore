@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-class ScoreEstimator:
+class Base:
     def __init__(self, lam, kernel, dtype):
         self._lam = lam
         self._kernel = kernel

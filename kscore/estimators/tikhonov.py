@@ -10,9 +10,9 @@ import tensorflow as tf
 
 from kscore.utils import random_choice, conjugate_gradient
 from kscore.kernels import CurlFreeIMQ
-from .base import ScoreEstimator
+from .base import Base
 
-class TikhonovEstimator(ScoreEstimator):
+class Tikhonov(Base):
     def __init__(self,
                  lam,
                  kernel=CurlFreeIMQ(),

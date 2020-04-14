@@ -8,10 +8,10 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
-from .base import BaseKernel
+from .base import Base
 from kscore.utils import median_heuristic
 
-class DiagonalKernel(BaseKernel):
+class Diagonal(Base):
 
     def __init__(self, kernel_hyperparams, heuristic_hyperparams):
         super().__init__('diagonal', kernel_hyperparams, heuristic_hyperparams)
@@ -60,7 +60,7 @@ class DiagonalKernel(BaseKernel):
             return tf.expand_dims(tf.expand_dims(K, -1), -1) * tf.eye(d)
 
         linear_operator = collections.namedtuple(
-            "KernelOperator", ["shape", "dtype", "apply", "apply_adjoint", "kernel_matrix"])
+            "Operator", ["shape", "dtype", "apply", "apply_adjoint", "kernel_matrix"])
 
         op = linear_operator(
             shape=[M * d, N * d],

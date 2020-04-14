@@ -8,10 +8,10 @@ from __future__ import print_function
 import collections
 import tensorflow as tf
 
-from .diagonal import DiagonalKernel
+from .diagonal import Diagonal
 from kscore.utils import median_heuristic
 
-class DiagonalIMQ(DiagonalKernel):
+class DiagonalIMQ(Diagonal):
 
     def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__(kernel_hyperparams, heuristic_hyperparams)
@@ -27,7 +27,7 @@ class DiagonalIMQ(DiagonalKernel):
 
         return imq, divergence
 
-class DiagonalIMQp(DiagonalKernel):
+class DiagonalIMQp(Diagonal):
 
     def __init__(self, p=0.5, kernel_hyperparams=None,
             heuristic_hyperparams=median_heuristic):
