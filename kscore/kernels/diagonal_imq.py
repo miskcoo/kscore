@@ -16,12 +16,7 @@ class DiagonalIMQ(DiagonalKernel):
     def __init__(self, kernel_hyperparams=None, heuristic_hyperparams=median_heuristic):
         super().__init__(kernel_hyperparams, heuristic_hyperparams)
 
-    def _gram(self, x, y, kernel_hyperparams):
-        if kernel_hyperparams is None:
-            kernel_width = self.heuristic_hyperparams(x, y)
-        else:
-            kernel_width = kernel_hyperparams
-
+    def _gram_impl(self, x, y, kernel_width):
         d = tf.shape(x)[-1]
         x_m = tf.expand_dims(x, -2)  # [M, 1, d]
         y_m = tf.expand_dims(y, -3)  # [1, N, d]
@@ -39,12 +34,7 @@ class DiagonalIMQp(DiagonalKernel):
         super().__init__(kernel_hyperparams, heuristic_hyperparams)
         self._p = p
 
-    def _gram(self, x, y, kernel_hyperparams):
-        if kernel_hyperparams is None:
-            kernel_width = self.heuristic_hyperparams(x, y)
-        else:
-            kernel_width = kernel_hyperparams
-
+    def _gram_impl(self, x, y, kernel_width):
         d = tf.shape(x)[-1]
         x_m = tf.expand_dims(x, -2)  # [M, 1, d]
         y_m = tf.expand_dims(y, -3)  # [1, N, d]

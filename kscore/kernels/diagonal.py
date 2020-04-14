@@ -17,6 +17,13 @@ class DiagonalKernel(BaseKernel):
         super().__init__('diagonal', kernel_hyperparams, heuristic_hyperparams)
 
     def _gram(self, x, y, kernel_hyperparams):
+        if kernel_hyperparams is None:
+            kernel_width = self.heuristic_hyperparams(x, y)
+        else:
+            kernel_width = kernel_hyperparams
+        return self._gram_impl(x, y, kernel_width)
+
+    def _gram_impl(self, x, y, kernel_hyperparams):
         raise NotImplementedError('Gram matrix not implemented!')
 
     def kernel_operator(self, x, y, kernel_hyperparams=None, compute_divergence=True):
