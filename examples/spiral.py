@@ -13,6 +13,8 @@ import argparse
 import sys
 import kscore
 
+from .utils import *
+
 def generate_data(n_samples):
     theta = tf.random.uniform([n_samples], minval=3.0, maxval=15.0)
     noise = tf.random.normal([n_samples, 2], stddev=np.exp(-1.0))
@@ -22,53 +24,10 @@ def generate_data(n_samples):
     ]) + noise
     return samples
 
-def evaluation_space(size, lower_box, upper_box):
-    xs_1d = np.linspace(lower_box, upper_box, size)
-    xs = []
-    for i in xs_1d:
-        for j in xs_1d:
-            xs.append([i, j])
-    xs = np.array(xs, np.float32)
-    return xs
-
-def plot_vector_field(X, Y, normalize=False):
-    if normalize:
-        for i in range(Y.shape[0]):
-            norm = (Y[i][0] ** 2 + Y[i][1] ** 2) ** 0.5
-            Y[i] /= norm
-    plt.quiver(X[:,0], X[:,1], Y[:,0], Y[:,1])
-
 def clip_energy(energy, threshold=24):
     max_v, min_v = np.max(energy), np.min(energy)
     clip_v = max_v - threshold
     return np.maximum(energy, clip_v) - max_v
-
-def get_estimator(args):
-    kernel_dicts = {
-        'curlfree_imq': kscore.kernels.CurlFreeIMQ(),
-        'curlfree_rbf': kscore.kernels.CurlFreeGaussian(),
-        'diagonal_imq': kscore.kernels.DiagonalIMQ(),
-        'diagonal_rbf': kscore.kernels.DiagonalGaussian(),
-    }
-
-    estimator_dicts = {
-        'tikhonov': kscore.estimators.Tikhonov,
-        'nu': kscore.estimators.NuMethod,
-        'landweber': kscore.estimators.Landweber,
-        'spectral_cutoff': kscore.estimators.SpectralCutoff,
-        'stein': kscore.estimators.Stein,
-    }
-
-    kernel = kernel_dicts[args.kernel]
-
-    if args.estimator == 'tikhonov_nystrom':
-        estimator = kscore.estimators.Tikhonov(lam=args.lam,
-                subsample_rate=args.subsample_rate,
-                kernel=kernel_dicts[args.kernel])
-    else:
-        estimator = estimator_dicts[args.estimator](
-                lam=args.lam, kernel=kernel_dicts[args.kernel])
-    return estimator
 
 def main(args):
     tf.compat.v1.set_random_seed(1234)
@@ -80,8 +39,8 @@ def main(args):
     lower_box, upper_box = -args.plot_range, args.plot_range
 
     samples = generate_data(n_samples)
-    x = evaluation_space(size, lower_box, upper_box)
-    x_energy = evaluation_space(energy_size, lower_box, upper_box)
+    x = linspace_2d(size, lower_box, upper_box)
+    x_energy = linspace_2d(energy_size, lower_box, upper_box)
 
     estimator = get_estimator(args)
     estimator.fit(samples, kernel_hyperparams=kernel_width)
@@ -115,16 +74,8 @@ if __name__ == "__main__":
     sns.set_style("white")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--estimator', type=str, default='nu', 
-            help='score estimator.', choices=['nu', 'landweber', 'tikhonov',
-                'tikhonov_nystrom', 'spectral_cutoff', 'stein'])
+    add_estimator_params(parser)
     parser.add_argument('--n_samples', type=int, default=200, help='sample size.')
-    parser.add_argument('--lam', type=float, default=1.0e-5, help='regularization parameter.')
-    parser.add_argument('--kernel', type=str, default='curlfree_imq',
-            help='matrix-valued kernel.', choices=['curlfree_imq',
-                'curlfree_rbf', 'diagonal_imq', 'diagonal_rbf'])
-    parser.add_argument('--subsample_rate', default=None, type=float,
-            help='subsample rate used in the Nystrom approimation.')
     parser.add_argument('--plot_range', default=32, type=int)
     parser.add_argument('--clip_energy', default=True, type=bool,
             help='whether to clip the energy function.')
