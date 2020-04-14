@@ -11,10 +11,10 @@ import kscore
 
 def get_estimator(args):
     kernel_dicts = {
-        'curlfree_imq': kscore.kernels.CurlFreeIMQ(),
-        'curlfree_rbf': kscore.kernels.CurlFreeGaussian(),
-        'diagonal_imq': kscore.kernels.DiagonalIMQ(),
-        'diagonal_rbf': kscore.kernels.DiagonalGaussian(),
+        'curlfree_imq': kscore.kernels.CurlFreeIMQ,
+        'curlfree_rbf': kscore.kernels.CurlFreeGaussian,
+        'diagonal_imq': kscore.kernels.DiagonalIMQ,
+        'diagonal_rbf': kscore.kernels.DiagonalGaussian,
     }
 
     estimator_dicts = {
@@ -25,15 +25,13 @@ def get_estimator(args):
         'stein': kscore.estimators.Stein,
     }
 
-    kernel = kernel_dicts[args.kernel]
-
     if args.estimator == 'tikhonov_nystrom':
         estimator = kscore.estimators.Tikhonov(lam=args.lam,
                 subsample_rate=args.subsample_rate,
-                kernel=kernel_dicts[args.kernel])
+                kernel=kernel_dicts[args.kernel]())
     else:
         estimator = estimator_dicts[args.estimator](
-                lam=args.lam, kernel=kernel_dicts[args.kernel])
+                lam=args.lam, kernel=kernel_dicts[args.kernel]())
     return estimator
 
 def add_estimator_params(parser):

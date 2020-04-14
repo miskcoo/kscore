@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 import kscore
+import kscore.utils
 
 from .utils import *
 
@@ -46,11 +47,13 @@ def main(args):
     estimator.fit(x_train)
     y_test = estimator.compute_gradients(x_test)
     l2_d = compute_l2_dist(y_test, grad_log_prob(x_test))
+    median_train = kscore.utils.median_heuristic(x_train, x_train)
 
     with tf.Session() as sess:
-        l2_d = sess.run(l2_d)
+        l2_d, median_train = sess.run([l2_d, median_train])
 
-    print("L2 distance = %.4lf" % l2_d)
+    print("Median of training set = %.4lf" % median_train)
+    print("Squared distance = %.4lf" % l2_d)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
