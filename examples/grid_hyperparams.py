@@ -45,8 +45,10 @@ def get_estimator(args, lam, sigma):
     if args.estimator == 'tikhonov_nystrom':
         estimator = kscore.estimators.Tikhonov(lam=lam,
                 subsample_rate=args.subsample_rate, kernel=kernel)
-    if args.estimator == 'tikhonov':
+    elif args.estimator == 'tikhonov':
         estimator = kscore.estimators.Tikhonov(lam=lam, use_cg=True, kernel=kernel)
+    elif args.estimator == 'tikhonov_high':
+        estimator = kscore.estimators.Tikhonov(lam=lam, use_cg=True, maxiter_cg=500, kernel=kernel)
     else:
         estimator = estimator_dicts[args.estimator](lam=lam, kernel=kernel)
     return estimator
@@ -85,12 +87,14 @@ def main(args, sess, repeat=4):
 
     l2_loss = tf.reduce_mean(losses)
 
-    sigma_middle = (3.0 * args.dim) ** 0.5
-    sigma_space = np.linspace(sigma_middle * 0.25, sigma_middle * 4)
-    lam_space = np.logspace(-8.5, 2)
+    sigma_space = np.linspace(args.sigma_low, args.sigma_high, args.bins)
+    lam_space = np.logspace(args.lam_low, args.lam_high, args.bins)
 
     results = []
-    f = open('%s-%s-%d.txt' % (args.tag, args.estimator, args.dim), 'w')
+    f = open('%s-%s-%s-%d.txt' % (args.tag, args.estimator, args.kernel, args.dim), 'w')
+
+    f.write(' '.join(map(str, [args.estimator, args.repeat, args.sigma_low,
+        args.sigma_high, args.lam_low, args.lam_high, args.bins, args.dim])))
 
     for sigma_ in sigma_space:
         lists = []
@@ -112,13 +116,19 @@ if __name__ == '__main__':
     parser.add_argument('--dim', type=int, default=128, help='dimension.')
     parser.add_argument('--estimator', type=str, default='nu', 
             help='score estimator.', choices=['nu', 'landweber', 'tikhonov',
-                'tikhonov_nystrom', 'spectral_cutoff', 'stein'])
+                'tikhonov_nystrom', 'spectral_cutoff', 'stein', 'tikhonov_high'])
     parser.add_argument('--kernel', type=str, default='curlfree_imq',
             help='matrix-valued kernel.', choices=['curlfree_imq',
                 'curlfree_rbf', 'diagonal_imq', 'diagonal_rbf'])
     parser.add_argument('--subsample_rate', default=None, type=float,
             help='subsample rate used in the Nystrom approimation.')
     parser.add_argument('--tag', default='log', type=str)
+    parser.add_argument('--bins', default=50, type=int)
+    parser.add_argument('--lam_low', default=-6, type=float)
+    parser.add_argument('--lam_high', default=-2, type=float)
+    parser.add_argument('--sigma_low', default=5, type=float)
+    parser.add_argument('--sigma_high', default=100, type=float)
+
     args = parser.parse_args(sys.argv[1:])
     with tf.Session() as sess:
         main(args, sess, args.repeat)
