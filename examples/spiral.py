@@ -9,6 +9,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
+import argparse
+import sys
 from kscore import *
 
 def generate_data(n_samples):
@@ -20,23 +22,14 @@ def generate_data(n_samples):
     ]) + noise
     return samples
 
-def evaluation_space(size, energy_size, lower_box, upper_box):
+def evaluation_space(size, lower_box, upper_box):
     xs_1d = np.linspace(lower_box, upper_box, size)
     xs = []
     for i in xs_1d:
         for j in xs_1d:
             xs.append([i, j])
     xs = np.array(xs, np.float32)
-    x = xs
-
-    xs_1d = np.linspace(lower_box, upper_box, energy_size)
-    xs_energy = []
-    for i in xs_1d:
-        for j in xs_1d:
-            xs_energy.append([i, j])
-    xs_energy = np.array(xs_energy, np.float32)
-    x_energy = xs_energy
-    return x, x_energy
+    return xs
 
 def plot_vector_field(X, Y, normalize=False):
     if normalize:
@@ -50,33 +43,65 @@ def clip_energy(energy, threshold=24):
     clip_v = max_v - threshold
     return np.maximum(energy, clip_v) - max_v
 
-def main():
+def get_estimator(args):
+    kernel_dicts = {
+        'curlfree_imq': CurlFreeIMQ(),
+        'curlfree_rbf': CurlFreeGaussian(),
+        'diagonal_imq': DiagonalIMQ(),
+        'diagonal_rbf': DiagonalGaussian(),
+    }
+
+    estimator_dicts = {
+        'tikhonov': TikhonovEstimator,
+        'nu': NuEstimator,
+        'landweber': LandweberEstimator,
+        'spectral_cutoff': SpectralCutoffEstimator,
+        'stein': SteinEstimator,
+    }
+
+    kernel = kernel_dicts[args.kernel]
+
+    if args.estimator == 'tikhonov_nystrom':
+        estimator = TikhonovEstimator(lam=args.lam,
+                subsample_rate=args.subsample_rate,
+                kernel=kernel_dicts[args.kernel])
+    else:
+        estimator = estimator_dicts[args.estimator](
+                lam=args.lam, kernel=kernel_dicts[args.kernel])
+    return estimator
+
+def main(args):
     tf.compat.v1.set_random_seed(1234)
     np.random.seed(1234)
 
     kernel_width = 8.0
-    n_samples = 200
+    n_samples = args.n_samples
     size, energy_size = 25, 300
     lower_box, upper_box = -32, 32
 
     samples = generate_data(n_samples)
-    x, x_energy = evaluation_space(size, energy_size, lower_box, upper_box)
+    x = evaluation_space(size, lower_box, upper_box)
+    x_energy = evaluation_space(energy_size, lower_box, upper_box)
 
-    estimator = NuEstimator(lam=0.00001, kernel=CurlFreeIMQp(0.5))
+    estimator = get_estimator(args)
     estimator.fit(samples, kernel_hyperparams=kernel_width)
 
-    energy = estimator.compute_energy(x_energy)
     gradient = estimator.compute_gradients(x)
+    if 'curlfree' in args.kernel:
+        energy = estimator.compute_energy(x_energy)
+    else: energy = tf.constant(0.0)
 
     with tf.compat.v1.Session() as sess:
         samples, energy, gradient = sess.run([samples, energy, gradient])
 
     # plot energy
-    plt.figure(figsize=(4, 4))
-    energy = clip_energy(energy)
-    img = np.transpose(np.reshape(energy, [energy_size, energy_size]))
-    img = np.flip(img, axis=0)
-    plt.imshow(img, extent=[lower_box, upper_box, lower_box, upper_box])
+    if 'curlfree' in args.kernel:
+        plt.figure(figsize=(4, 4))
+        if args.clip_energy:
+            energy = clip_energy(energy, threshold=args.clip_threshold)
+        img = np.transpose(np.reshape(energy, [energy_size, energy_size]))
+        img = np.flip(img, axis=0)
+        plt.imshow(img, extent=[lower_box, upper_box, lower_box, upper_box])
 
     # plot the score field
     plt.figure(figsize=(4, 4))
@@ -88,4 +113,21 @@ if __name__ == "__main__":
     sns.set()
     sns.set_color_codes()
     sns.set_style("white")
-    main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--estimator', type=str, default='nu', 
+            help='score estimator.', choices=['nu', 'landweber', 'tikhonov',
+                'tikhonov_nystrom', 'spectral_cutoff', 'stein'])
+    parser.add_argument('--n_samples', type=int, default=200, help='sample size.')
+    parser.add_argument('--lam', type=float, default=1.0e-5, help='regularization parameter.')
+    parser.add_argument('--kernel', type=str, default='curlfree_imq',
+            help='matrix-valued kernel.', choices=['curlfree_imq',
+                'curlfree_rbf', 'diagonal_imq', 'diagonal_rbf'])
+    parser.add_argument('--subsample_rate', default=None, type=float,
+            help='subsample rate used in the Nystrom approimation.')
+    parser.add_argument('--clip_energy', default=True, type=bool,
+            help='whether to clip the energy function.')
+    parser.add_argument('--clip_threshold', default=24, type=int)
+    args = parser.parse_args(sys.argv[1:])
+
+    main(args)
