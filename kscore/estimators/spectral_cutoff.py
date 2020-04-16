@@ -36,13 +36,14 @@ class SpectralCutoff(Base):
                 kernel_hyperparams=kernel_hyperparams)
         K = K_op.kernel_matrix(flatten=True)
 
-        eigen_values, eigen_vectors = tf.self_adjoint_eig(K / tf.cast(M, self._dtype))
+        eigen_values, eigen_vectors = tf.linalg.eigh(K / tf.cast(M, self._dtype))
         if self._keep_rate is not None:
             total_num = tf.shape(K)[0]
             n_eigen = tf.cast(tf.cast(total_num, self._dtype) * self._keep_rate, tf.int32)
         else:
             n_eigen = tf.reduce_sum(tf.cast(eigen_values > self._lam, tf.int32))
         # eigen_values = tf.Print(eigen_values, [eigen_values[0], eigen_values[-1]])
+        n_eigen = tf.maximum(n_eigen, 1)
         eigen_values = eigen_values[..., -n_eigen:]
 
         # [Md, eigens], or [M, eigens]

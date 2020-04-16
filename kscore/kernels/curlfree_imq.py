@@ -17,7 +17,7 @@ class CurlFreeIMQ(SquareCurlFree):
 
     def _gram_derivatives_impl(self, r, norm_rr, sigma):
         inv_sqr_sigma = 1.0 / tf.square(sigma)
-        imq = tf.rsqrt(1.0 + norm_rr * inv_sqr_sigma) # [M, N]
+        imq = tf.math.rsqrt(1.0 + norm_rr * inv_sqr_sigma) # [M, N]
         imq_2 = 1.0 / (1.0 + norm_rr * inv_sqr_sigma)
         G_1st = -0.5 * imq_2 * inv_sqr_sigma * imq
         G_2nd = -1.5 * imq_2 * inv_sqr_sigma * G_1st

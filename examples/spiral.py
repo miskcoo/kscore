@@ -24,11 +24,6 @@ def generate_data(n_samples):
     ]) + noise
     return samples
 
-def clip_energy(energy, threshold=24):
-    max_v, min_v = np.max(energy), np.min(energy)
-    clip_v = max_v - threshold
-    return np.maximum(energy, clip_v) - max_v
-
 def main(args):
     tf.compat.v1.set_random_seed(1234)
     np.random.seed(1234)

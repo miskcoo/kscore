@@ -61,3 +61,8 @@ def linspace_2d(size, lower_box, upper_box):
             xs.append([i, j])
     xs = np.array(xs, np.float32)
     return xs
+
+def clip_energy(energy, threshold=24):
+    max_v, min_v = np.max(energy), np.min(energy)
+    clip_v = max_v - threshold
+    return np.maximum(energy, clip_v) - max_v

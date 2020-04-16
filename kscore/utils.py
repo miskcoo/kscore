@@ -34,7 +34,7 @@ def random_choice(inputs, n_samples):
     # (1, n_states) since multinomial requires 2D logits.
     uniform_log_prob = tf.expand_dims(tf.zeros(tf.shape(inputs)[0]), 0)
 
-    ind = tf.multinomial(uniform_log_prob, n_samples)
+    ind = tf.random.categorical(uniform_log_prob, n_samples)
     ind = tf.squeeze(ind, 0, name="random_choice_ind")  # (n_samples,)
 
     return tf.gather(inputs, ind, name="random_choice")

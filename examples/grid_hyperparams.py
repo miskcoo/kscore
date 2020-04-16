@@ -61,6 +61,7 @@ def main(args, sess, repeat=4):
 
     for _ in range(repeat):
         grid_vertices = np.random.randint(low=0, high=2, size=[dim, dim]).astype(np.float32)
+        grid_vertices *= args.cube_length
 
         def sampler(n_samples):
             q_id = tf.random.categorical(tf.log(tf.cast(dim, tf.float32)) * tf.zeros([1, dim]), n_samples)
@@ -87,14 +88,17 @@ def main(args, sess, repeat=4):
 
     l2_loss = tf.reduce_mean(losses)
 
-    sigma_space = np.linspace(args.sigma_low, args.sigma_high, args.bins)
+    if args.sigma_scale == 'lin':
+        sigma_space = np.linspace(args.sigma_low, args.sigma_high, args.bins)
+    else:
+        sigma_space = np.logspace(args.sigma_low, args.sigma_high, args.bins)
     lam_space = np.logspace(args.lam_low, args.lam_high, args.bins)
 
     results = []
     f = open('%s-%s-%s-%d.txt' % (args.tag, args.estimator, args.kernel, args.dim), 'w')
 
     f.write(' '.join(map(str, [args.estimator, args.repeat, args.sigma_low,
-        args.sigma_high, args.lam_low, args.lam_high, args.bins, args.dim])))
+        args.sigma_high, args.lam_low, args.lam_high, args.bins, args.dim, args.sigma_scale])))
 
     for sigma_ in sigma_space:
         lists = []
@@ -128,6 +132,8 @@ if __name__ == '__main__':
     parser.add_argument('--lam_high', default=-2, type=float)
     parser.add_argument('--sigma_low', default=5, type=float)
     parser.add_argument('--sigma_high', default=100, type=float)
+    parser.add_argument('--sigma_scale', default='lin', type=str, choices=['lin', 'log'])
+    parser.add_argument('--cube_length', default=1, type=float)
 
     args = parser.parse_args(sys.argv[1:])
     with tf.Session() as sess:

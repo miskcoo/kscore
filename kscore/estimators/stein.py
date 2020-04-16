@@ -33,7 +33,7 @@ class Stein(Base):
         # In the Stein estimator (Li & Turner, 2018), the regularization parameter is divided
         # by $M^2$, for the unified meaning of $\lambda$, we multiply this back.
         Mlam = tf.cast(M, self._dtype) ** 2 * self._lam
-        Kinv = tf.matrix_inverse(K + Mlam * tf.eye(M))
+        Kinv = tf.linalg.inv(K + Mlam * tf.eye(M))
         H_dh = tf.reduce_sum(K_div, axis=-2)
         grads = -tf.matmul(Kinv, H_dh)
         self._coeff = { 'Kinv': Kinv, 'grads': grads, 'Mlam': Mlam }
