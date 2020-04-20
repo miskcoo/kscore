@@ -5,9 +5,13 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+import os
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import kscore
+from skimage import io, img_as_ubyte
+from skimage.exposure import rescale_intensity
 
 def get_estimator(args):
     kernel_dicts = {
@@ -66,3 +70,46 @@ def clip_energy(energy, threshold=24):
     max_v, min_v = np.max(energy), np.min(energy)
     clip_v = max_v - threshold
     return np.maximum(energy, clip_v) - max_v
+
+def makedirs(filename):
+    if not os.path.exists(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
+
+def setup_logger(name, src, result_path, filename="log"):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    log_path = os.path.join(result_path, filename)
+    makedirs(log_path)
+    info_file_handler = logging.FileHandler(log_path)
+    info_file_handler.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    logger.addHandler(info_file_handler)
+    logger.addHandler(console_handler)
+    logger.info(src)
+    with open(src) as f:
+        logger.info(f.read())
+    return logger
+
+def save_image_collections(x, filename, shape=(10, 10), scale_each=False, transpose=False):
+    makedirs(filename)
+    n = x.shape[0]
+    if transpose:
+        x = x.transpose(0, 2, 3, 1)
+    if scale_each is True:
+        for i in range(n):
+            x[i] = rescale_intensity(x[i], out_range=(0, 1))
+    n_channels = x.shape[3]
+    x = img_as_ubyte(x)
+    r, c = shape
+    if r * c < n:
+        print('Shape too small to contain all images')
+    h, w = x.shape[1:3]
+    ret = np.zeros((h * r, w * c, n_channels), dtype='uint8')
+    for i in range(r):
+        for j in range(c):
+            if i * c + j < n:
+                ret[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = x[i * c + j]
+    ret = ret.squeeze()
+    io.imsave(filename, ret)
+    return ret

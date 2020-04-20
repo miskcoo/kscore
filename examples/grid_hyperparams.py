@@ -7,7 +7,6 @@ from __future__ import division
 
 import sys
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 import kscore
@@ -54,15 +53,18 @@ def get_estimator(args, lam, sigma):
     return estimator
 
 def main(args, sess, repeat=4):
+    tf.compat.v1.set_random_seed(1234)
+    np.random.seed(1234)
+
     dim = args.dim
     losses = []
     lam = tf.placeholder(tf.float32, shape=[])
     sigma = tf.placeholder(tf.float32, shape=[])
 
-    for _ in range(repeat):
-        grid_vertices = np.random.randint(low=0, high=2, size=[dim, dim]).astype(np.float32)
-        grid_vertices *= args.cube_length
+    grid_vertices = np.random.randint(low=0, high=2, size=[dim, dim]).astype(np.float32)
+    grid_vertices *= args.cube_length
 
+    for _ in range(repeat):
         def sampler(n_samples):
             q_id = tf.random.categorical(tf.log(tf.cast(dim, tf.float32)) * tf.zeros([1, dim]), n_samples)
             q = tf.random.normal([n_samples, dim, dim]) + grid_vertices
@@ -99,6 +101,7 @@ def main(args, sess, repeat=4):
 
     f.write(' '.join(map(str, [args.estimator, args.repeat, args.sigma_low,
         args.sigma_high, args.lam_low, args.lam_high, args.bins, args.dim, args.sigma_scale])))
+    f.write('\n')
 
     for sigma_ in sigma_space:
         lists = []
@@ -109,15 +112,33 @@ def main(args, sess, repeat=4):
             f.write(txt + '\n')
             lists.append(loss)
         f.flush()
-        results.append(list)
+        results.append(lists)
     f.close()
+
+    if args.show_figure:
+        import matplotlib.pyplot as plt
+        Z_clip = np.minimum(results, np.min(results) * 3.0)
+        Z_clip = np.log(Z_clip)
+        plt.xscale('log')
+        if args.sigma_scale == 'log':
+            plt.yscale('log')
+        plt.xlabel('regularization parameter')
+        plt.ylabel('kernel bandwidth')
+        ct = plt.contour(lam_space, sigma_space, Z_clip, 10)
+        plt.clabel(ct, fontsize=7, inline=1)
+        idx = np.argmin(results)
+        argmin_x, argmin_y = lam_space[idx % args.bins], sigma_space[idx // args.bins]
+        print("Minimal loss = %.4f, attained when lam = %.4g, sigma = %.4g" % (np.min(results), argmin_x, argmin_y))
+        plt.scatter([argmin_x], [argmin_y], marker='x', s=70)
+        plt.show()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_data', type=int, default=128, help='data sample size.')
     parser.add_argument('--n_test', type=int, default=1024, help='test sample size.')
-    parser.add_argument('--repeat', type=int, default=4)
-    parser.add_argument('--dim', type=int, default=128, help='dimension.')
+    parser.add_argument('--repeat', type=int, default=1)
+    parser.add_argument('--dim', type=int, default=32, help='dimension.')
     parser.add_argument('--estimator', type=str, default='nu', 
             help='score estimator.', choices=['nu', 'landweber', 'tikhonov',
                 'tikhonov_nystrom', 'spectral_cutoff', 'stein', 'tikhonov_high'])
@@ -127,13 +148,14 @@ if __name__ == '__main__':
     parser.add_argument('--subsample_rate', default=None, type=float,
             help='subsample rate used in the Nystrom approimation.')
     parser.add_argument('--tag', default='log', type=str)
-    parser.add_argument('--bins', default=50, type=int)
+    parser.add_argument('--bins', default=10, type=int)
     parser.add_argument('--lam_low', default=-6, type=float)
     parser.add_argument('--lam_high', default=-2, type=float)
     parser.add_argument('--sigma_low', default=5, type=float)
-    parser.add_argument('--sigma_high', default=100, type=float)
+    parser.add_argument('--sigma_high', default=40, type=float)
     parser.add_argument('--sigma_scale', default='lin', type=str, choices=['lin', 'log'])
     parser.add_argument('--cube_length', default=1, type=float)
+    parser.add_argument('--show_figure', default=1, type=int)
 
     args = parser.parse_args(sys.argv[1:])
     with tf.Session() as sess:
