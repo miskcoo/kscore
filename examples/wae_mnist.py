@@ -12,7 +12,7 @@ import time
 import argparse
 import numpy as np
 import tensorflow as tf
-import zhusuan as zs
+import zhusuan as zs  # https://github.com/thu-ml/zhusuan
 from tensorflow.contrib import layers
 from tensorflow.python.client import timeline
 

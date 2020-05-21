@@ -46,8 +46,8 @@ def get_estimator(args, lam, sigma):
                 subsample_rate=args.subsample_rate, kernel=kernel)
     elif args.estimator == 'tikhonov':
         estimator = kscore.estimators.Tikhonov(lam=lam, use_cg=True, kernel=kernel)
-    elif args.estimator == 'tikhonov_high':
-        estimator = kscore.estimators.Tikhonov(lam=lam, use_cg=True, maxiter_cg=500, kernel=kernel)
+    elif args.estimator == 'spectral_cutoff_percent':
+        estimator = kscore.estimators.SpectralCutoff(lam=None, keep_rate=lam, kernel=kernel)
     else:
         estimator = estimator_dicts[args.estimator](lam=lam, kernel=kernel)
     return estimator
@@ -94,7 +94,11 @@ def main(args, sess, repeat=4):
         sigma_space = np.linspace(args.sigma_low, args.sigma_high, args.bins)
     else:
         sigma_space = np.logspace(args.sigma_low, args.sigma_high, args.bins)
-    lam_space = np.logspace(args.lam_low, args.lam_high, args.bins)
+
+    if args.estimator == 'spectral_cutoff_percent':
+        lam_space = np.linspace(args.lam_low, args.lam_high, args.bins)
+    else:
+        lam_space = np.logspace(args.lam_low, args.lam_high, args.bins)
 
     results = []
     f = open('%s-%s-%s-%d.txt' % (args.tag, args.estimator, args.kernel, args.dim), 'w')
@@ -119,10 +123,13 @@ def main(args, sess, repeat=4):
         import matplotlib.pyplot as plt
         Z_clip = np.minimum(results, np.min(results) * 3.0)
         Z_clip = np.log(Z_clip)
-        plt.xscale('log')
+        if args.estimator == 'spectral_cutoff_percent':
+            plt.xlabel('keep rate of eigenvalues')
+        else:
+            plt.xlabel('regularization parameter')
+            plt.xscale('log')
         if args.sigma_scale == 'log':
             plt.yscale('log')
-        plt.xlabel('regularization parameter')
         plt.ylabel('kernel bandwidth')
         ct = plt.contour(lam_space, sigma_space, Z_clip, 10)
         plt.clabel(ct, fontsize=7, inline=1)
@@ -141,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--dim', type=int, default=32, help='dimension.')
     parser.add_argument('--estimator', type=str, default='nu', 
             help='score estimator.', choices=['nu', 'landweber', 'tikhonov',
-                'tikhonov_nystrom', 'spectral_cutoff', 'stein', 'tikhonov_high'])
+                'tikhonov_nystrom', 'spectral_cutoff', 'stein', 'spectral_cutoff_percent'])
     parser.add_argument('--kernel', type=str, default='curlfree_imq',
             help='matrix-valued kernel.', choices=['curlfree_imq',
                 'curlfree_rbf', 'diagonal_imq', 'diagonal_rbf'])
