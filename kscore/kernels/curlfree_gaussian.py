@@ -16,6 +16,11 @@ class CurlFreeGaussian(SquareCurlFree):
         super().__init__(kernel_hyperparams, heuristic_hyperparams)
 
     def _gram_derivatives_impl(self, r, norm_rr, sigma):
+        ''' 
+        Construct the curl-free kernel $-\nabla^2 \psi(\|x - y\|^2)$.
+        You need to provide the first, second and third derivatives of $\psi$.
+        See eq. (21) and eq. (22). 
+        '''
         inv_sqr_sigma = 0.5 / tf.square(sigma)
         rbf = tf.exp(-norm_rr * inv_sqr_sigma)
         G_1st = -rbf * inv_sqr_sigma
