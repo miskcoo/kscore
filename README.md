@@ -30,7 +30,8 @@ Tensorflow >= 1.14.0
   # Tikhonov regularization + Conjugate Gradient (KEF-CG, Example 3.8)
   kefcg_estimator = Tikhonov(lam=0.0001, use_cg=True, kernel=CurlFreeIMQ())
   
-  # Tikhonov regularization + Nystrom approximation (Appendix C.1), equivalent to NKEF (Example C.1) using 60% samples
+  # Tikhonov regularization + Nystrom approximation (Appendix C.1), 
+  # equivalent to NKEF (Example C.1) using 60% samples
   nkef_estimator = Tikhonov(lam=0.0001, use_cg=False, subsample_rate=0.6, kernel=CurlFreeIMQ())
   
   # Tikhonov regularization + Nystrom approximation + Conjugate Gradient
@@ -44,7 +45,8 @@ Tensorflow >= 1.14.0
   nu_estimator = NuMethod(lam=0.00001, kernel=CurlFreeIMQ())
   nu_estimator = NuMethod(iternum=100, kernel=CurlFreeIMQ())
   
-  # Spectral cut-off regularization (Theorem 3.2), equivalent to SSGE (Example 3.6) using 90% eigenvalues
+  # Spectral cut-off regularization (Theorem 3.2), 
+  # equivalent to SSGE (Example 3.6) using 90% eigenvalues
   ssge_estimator = SpectralCutoff(keep_rate=0.9, kernel=DiagonalIMQ())
   
   # Original Stein estimator
@@ -56,6 +58,7 @@ Tensorflow >= 1.14.0
   ```python
   # manually specify the hyperparameter
   estimator.fit(samples, kernel_hyperparams=kernel_width)
+
   # automatically choose the hyperparameter (using the median trick)
   estimator.fit(samples)
   ```
