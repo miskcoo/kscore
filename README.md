@@ -21,31 +21,34 @@ Tensorflow >= 1.14.0
 * Create a score estimator
 
   ```python
+  from kscore.estimators import *
+  from kscore.kernels import *
+
   # Tikhonov regularization (Theorem 3.1), equivalent to KEF (Example 3.5)
-  kef_estimator = kscore.estimators.Tikhonov(lam=0.0001, use_cg=False, kernel=kscore.kernels.CurlFreeIMQ)
+  kef_estimator = Tikhonov(lam=0.0001, use_cg=False, kernel=CurlFreeIMQ())
   
   # Tikhonov regularization + Conjugate Gradient (KEF-CG, Example 3.8)
-  kefcg_estimator = kscore.estimators.Tikhonov(lam=0.0001, use_cg=True, kernel=kscore.kernels.CurlFreeIMQ)
+  kefcg_estimator = Tikhonov(lam=0.0001, use_cg=True, kernel=CurlFreeIMQ())
   
   # Tikhonov regularization + Nystrom approximation (Appendix C.1), equivalent to NKEF (Example C.1) using 60% samples
-  nkef_estimator = kscore.estimators.Tikhonov(lam=0.0001, use_cg=False, subsample_rate=0.6, kernel=kscore.kernels.CurlFreeIMQ)
+  nkef_estimator = Tikhonov(lam=0.0001, use_cg=False, subsample_rate=0.6, kernel=CurlFreeIMQ())
   
   # Tikhonov regularization + Nystrom approximation + Conjugate Gradient
-  nkefcg_estimator = kscore.estimators.Tikhonov(lam=0.0001, use_cg=True, subsample_rate=0.6, kernel=kscore.kernels.CurlFreeIMQ)
+  nkefcg_estimator = Tikhonov(lam=0.0001, use_cg=True, subsample_rate=0.6, kernel=CurlFreeIMQ())
   
   # Landweber iteration (Theorem 3.4)
-  landweber_estimator = kscore.estimators.Landweber(lam=0.00001, kernel=kscore.kernels.CurlFreeIMQ)
-  landweber_estimator = kscore.estimators.Landweber(iternum=100, kernel=kscore.kernels.CurlFreeIMQ)
+  landweber_estimator = Landweber(lam=0.00001, kernel=CurlFreeIMQ())
+  landweber_estimator = Landweber(iternum=100, kernel=CurlFreeIMQ())
   
   # nu-method (Example C.4)
-  nu_estimator = kscore.estimators.NuMethod(lam=0.00001, kernel=kscore.kernels.CurlFreeIMQ)
-  nu_estimator = kscore.estimators.NuMethod(iternum=100, kernel=kscore.kernels.CurlFreeIMQ)
+  nu_estimator = NuMethod(lam=0.00001, kernel=CurlFreeIMQ())
+  nu_estimator = NuMethod(iternum=100, kernel=CurlFreeIMQ())
   
   # Spectral cut-off regularization (Theorem 3.2), equivalent to SSGE (Example 3.6) using 90% eigenvalues
-  ssge_estimator = kscore.estimators.SpectralCutoff(keep_rate=0.9, kernel=kscore.kernels.DiagonalIMQ)
+  ssge_estimator = SpectralCutoff(keep_rate=0.9, kernel=DiagonalIMQ())
   
   # Original Stein estimator
-  stein_estimator = kscore.estimators.Stein(lam=0.001)
+  stein_estimator = Stein(lam=0.001)
   ```
 
 * Fit the score estimator using samples
